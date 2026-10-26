@@ -88,15 +88,9 @@ export default function Layout() {
 
   return (
     <>
-      {/* Global API Loading Bar & Badge */}
+      {/* Global API Loading Bar (Đã loại bỏ floating badge 'Đang tải dữ liệu...') */}
       {isApiLoading && (
-        <>
-          <div className="spa-loading-bar" role="progressbar" aria-label="Đang tải dữ liệu từ máy chủ" />
-          <div className="spa-loading-badge" aria-live="polite">
-            <span className="spa-spinner" />
-            <span>Đang tải dữ liệu...</span>
-          </div>
-        </>
+        <div className="spa-loading-bar" role="progressbar" aria-label="Đang tải dữ liệu từ máy chủ" />
       )}
 
       <header id="site-header" className="site-header">
@@ -123,11 +117,8 @@ export default function Layout() {
               ))}
             </nav>
 
-            {/* Logo */}
+            {/* Logo (chỉ giữ lại chữ) */}
             <Link to="/" className="brand md:justify-self-center" aria-label="CRISPY HOUSE - Trang chủ">
-              <span className="brand-mark">
-                <Icon name="pan" cls="w-[22px] h-[22px]" sw={1.5} />
-              </span>
               <span className="brand-word">
                 <b>CRISPY</b>
                 <small>HOUSE</small>
@@ -171,10 +162,7 @@ export default function Layout() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-[rgba(0,0,0,0.06)]">
             {/* Brand Info */}
             <div className="space-y-4 md:col-span-1">
-              <Link to="/" className="brand inline-flex items-center gap-2.5 text-cream">
-                <span className="brand-mark w-9 h-9 rounded-xl grid place-items-center bg-gradient-to-br from-[#e01a10] to-[#8f0505] text-white shadow-md shadow-brand/40">
-                  <Icon name="pan" cls="w-5 h-5" sw={1.5} />
-                </span>
+              <Link to="/" className="brand inline-flex items-center gap-2.5 text-cream" aria-label="CRISPY HOUSE - Trang chủ">
                 <span className="brand-word leading-none">
                   <b className="font-extrabold text-base tracking-wider">CRISPY</b>
                   <small className="block text-[9px] font-semibold tracking-[0.35em] text-sand">HOUSE</small>

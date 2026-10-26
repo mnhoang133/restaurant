@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { apiClient, resolveImageUrl } from '../../api/client';
+import { apiClient, resolveImageUrl, getDishImageUrl, getCategoryImageUrl } from '../../api/client';
 import Icon from '../../components/Icon';
-import { ErrorView, LoadingView } from '../../components/StateViews';
+import { LoadingView } from '../../components/StateViews';
 
 const DEFAULT_CATEGORIES = [
   'Gà Rán',
@@ -13,91 +13,48 @@ const DEFAULT_CATEGORIES = [
   'Tráng Miệng',
 ];
 
-const SEARCH_MODES = [
-  {
-    id: 'basic',
-    name: 'Cơ bản',
-    icon: 'search',
-    desc: 'Tìm một phần tên món ăn (LIKE không phân biệt hoa thường)',
-  },
-  {
-    id: 'advanced',
-    name: 'Nâng cao',
-    icon: 'list',
-    desc: 'Kết hợp nhiều tiêu chí AND (Tên, Danh mục, Khoảng giá, Trạng thái)',
-  },
-  {
-    id: 'fulltext',
-    name: 'Toàn văn (FTS)',
-    icon: 'sparkle',
-    desc: 'PostgreSQL FTS simple trên Tên & Mô tả món, xếp hạng theo độ khớp',
-  },
-  {
-    id: 'fuzzy',
-    name: 'Gần đúng (Fuzzy)',
-    icon: 'pan',
-    desc: 'pg_trgm bắt lỗi chính tả, gõ nhầm ký tự (similarity >= 0.3)',
-  },
-];
-
 const PAGINATION_MODES = [
-  {
-    id: 'numbers',
-    label: 'Số trang',
-    badge: 'Page Numbering',
-    icon: 'grid',
-    desc: 'Chọn trang cụ thể để thay danh sách đang xem',
-  },
-  {
-    id: 'loadmore',
-    label: 'Tải thêm',
-    badge: 'Load More',
-    icon: 'plus',
-    desc: 'Bấm nút để nối tiếp các món mới vào đuôi danh sách',
-  },
-  {
-    id: 'infinite',
-    label: 'Cuộn vô tận',
-    badge: 'Infinite Scroll',
-    icon: 'arrow-right',
-    desc: 'Tự động tải thêm khi cuộn trang gần tới chân danh sách',
-  },
+  { id: 'numbers', label: 'Số trang', icon: 'grid' },
+  { id: 'loadmore', label: 'Tải thêm', icon: 'plus' },
+  { id: 'infinite', label: 'Cuộn vô tận', icon: 'arrow-right' },
 ];
 
-const PAGE_SIZE_OPTIONS = [6, 9, 12, 18];
+const SORT_OPTIONS = [
+  { id: 'default', label: 'Mặc định', sortBy: 'id', sortOrder: 'asc' },
+  { id: 'price_asc', label: 'Giá: Thấp đến Cao', sortBy: 'price', sortOrder: 'asc' },
+  { id: 'price_desc', label: 'Giá: Cao đến Thấp', sortBy: 'price', sortOrder: 'desc' },
+  { id: 'name_asc', label: 'Tên: A → Z', sortBy: 'name', sortOrder: 'asc' },
+  { id: 'name_desc', label: 'Tên: Z → A', sortBy: 'name', sortOrder: 'desc' },
+  { id: 'newest', label: 'Món mới nhất', sortBy: 'createdAt', sortOrder: 'desc' },
+];
 
 export default function DishesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // 1. ĐỌC THAM SỐ TỪ URL (Slide 14 & 15: Mở lại đúng kết quả qua URL)
-  const modeParam = searchParams.get('mode') || 'basic';
+  // 1. ĐỌC THAM SỐ TỪ URL (Slide 14 & 15: Lưu và khôi phục trạng thái)
   const qParam = searchParams.get('q') || '';
   const categoryParam = searchParams.get('category') || '';
   const minPriceParam = searchParams.get('minPrice') || '';
   const maxPriceParam = searchParams.get('maxPrice') || '';
   const availableParam = searchParams.get('available') || ''; // 'true' | 'false' | ''
-  const sortByParam =
-    searchParams.get('sortBy') ||
-    (modeParam === 'fulltext' ? 'rank' : modeParam === 'fuzzy' ? 'similarity' : 'id');
-  const sortOrderParam =
-    searchParams.get('sortOrder') ||
-    (sortByParam === 'rank' || sortByParam === 'similarity' ? 'desc' : 'asc');
+  const sortByParam = searchParams.get('sortBy') || 'id';
+  const sortOrderParam = searchParams.get('sortOrder') || 'asc';
   const pageParam = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
-  const pageSizeParam = Math.min(
-    100,
-    Math.max(1, parseInt(searchParams.get('pageSize') || '9', 10) || 9)
-  );
+  const pageSizeParam = 9; // 9 món/trang phù hợp với bố cục lưới 3 cột
   const paginationMode = searchParams.get('paginationMode') || 'numbers'; // 'numbers' | 'loadmore' | 'infinite'
 
-  // 2. FORM STATE (Dữ liệu nhập liệu trên Form)
+  // Trạng thái bật/tắt bộ lọc nâng cao
+  const isAdvancedInitial =
+    Boolean(categoryParam || minPriceParam || maxPriceParam || availableParam) ||
+    searchParams.get('advanced') === 'true';
+  const [showAdvanced, setShowAdvanced] = useState(isAdvancedInitial);
+
+  // 2. FORM STATE (Dữ liệu nhập liệu)
   const [searchInput, setSearchInput] = useState(qParam);
   const [categoryInput, setCategoryInput] = useState(categoryParam);
   const [minPriceInput, setMinPriceInput] = useState(minPriceParam);
   const [maxPriceInput, setMaxPriceInput] = useState(maxPriceParam);
   const [availableInput, setAvailableInput] = useState(availableParam);
-  const [sortByInput, setSortByInput] = useState(sortByParam);
-  const [sortOrderInput, setSortOrderInput] = useState(sortOrderParam);
-  const [pageSizeInput, setPageSizeInput] = useState(pageSizeParam);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
 
   // 3. DATA & LOADING STATES
@@ -118,42 +75,37 @@ export default function DishesPage() {
   const [hasMore, setHasMore] = useState(true);
   const [loadMoreError, setLoadMoreError] = useState(null);
 
-  // Refs để quản lý đồng bộ tránh race condition & duplicate calls (Slide 13)
+  // Refs quản lý đồng bộ tránh race condition (Slide 13 & 38)
   const pendingRef = useRef(false);
   const sentinelRef = useRef(null);
   const abortControllerRef = useRef(null);
 
-  // Cập nhật form input khi URL params thay đổi (Back/Forward navigation, Slide 15)
+  // Đồng bộ form khi URL thay đổi (Back / Forward)
   useEffect(() => {
     setSearchInput(qParam);
     setCategoryInput(categoryParam);
     setMinPriceInput(minPriceParam);
     setMaxPriceInput(maxPriceParam);
     setAvailableInput(availableParam);
-    setSortByInput(sortByParam);
-    setSortOrderInput(sortOrderParam);
-    setPageSizeInput(pageSizeParam);
-  }, [
-    qParam,
-    categoryParam,
-    minPriceParam,
-    maxPriceParam,
-    availableParam,
-    sortByParam,
-    sortOrderParam,
-    pageSizeParam,
-  ]);
+    if (categoryParam || minPriceParam || maxPriceParam || availableParam) {
+      setShowAdvanced(true);
+    }
+  }, [qParam, categoryParam, minPriceParam, maxPriceParam, availableParam]);
 
   useEffect(() => {
-    document.title = 'Thực đơn & Tìm kiếm món ăn · CRISPY HOUSE';
+    document.title = 'Thực đơn món ăn · CRISPY HOUSE';
   }, []);
 
-  // Tải danh mục thực tế từ backend (nếu có)
+  // Lấy danh mục thực tế từ backend (chuẩn hóa về mảng chuỗi tên danh mục)
   useEffect(() => {
     let isMounted = true;
     apiClient.dishes.getCategories().then((res) => {
       if (isMounted && res.ok && Array.isArray(res.data) && res.data.length > 0) {
-        setCategories(res.data);
+        // Backend có thể trả về mảng object [{ name: 'Gà Rán', count: 200, cover: '...' }] hoặc mảng chuỗi
+        const names = res.data
+          .map((c) => (typeof c === 'object' && c !== null ? c.name : c))
+          .filter(Boolean);
+        setCategories(names);
       }
     });
     return () => {
@@ -161,13 +113,21 @@ export default function DishesPage() {
     };
   }, []);
 
-  // Xây dựng params gửi lên API theo chuẩn API Contract
+  // Xây dựng params gửi API (tự động kích hoạt mode=advanced khi có tiêu chí mở rộng)
   const buildApiParams = useCallback(
     (targetPage) => {
+      const hasAdvancedCriteria = Boolean(
+        categoryParam.trim() ||
+          (minPriceParam !== '' && !isNaN(Number(minPriceParam))) ||
+          (maxPriceParam !== '' && !isNaN(Number(maxPriceParam))) ||
+          availableParam === 'true' ||
+          availableParam === 'false'
+      );
+
       const params = {
         page: targetPage,
         pageSize: pageSizeParam,
-        mode: modeParam,
+        mode: hasAdvancedCriteria ? 'advanced' : 'basic',
         sortBy: sortByParam,
         sortOrder: sortOrderParam,
       };
@@ -176,7 +136,7 @@ export default function DishesPage() {
         params.q = qParam.trim();
       }
 
-      if (modeParam === 'advanced') {
+      if (hasAdvancedCriteria) {
         if (categoryParam.trim()) params.category = categoryParam.trim();
         if (minPriceParam !== '' && !isNaN(Number(minPriceParam))) {
           params.minPrice = Number(minPriceParam);
@@ -193,7 +153,6 @@ export default function DishesPage() {
     },
     [
       pageSizeParam,
-      modeParam,
       sortByParam,
       sortOrderParam,
       qParam,
@@ -204,11 +163,8 @@ export default function DishesPage() {
     ]
   );
 
-  /**
-   * Tải dữ liệu ban đầu hoặc tải khi đổi trang trong chế độ Numbered
-   */
+  // Tải dữ liệu chính (Trang ban đầu hoặc chuyển trang trong Numbered)
   const fetchPrimaryDishes = useCallback(async () => {
-    // Hủy request trước đó nếu chưa hoàn tất để tránh race condition (Slide 38)
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -220,7 +176,6 @@ export default function DishesPage() {
     setLoadMoreError(null);
     pendingRef.current = false;
 
-    // Trong chế độ Load More hoặc Infinite Scroll, lần tải đầu tiên luôn lấy trang 1
     const requestPage = paginationMode === 'numbers' ? pageParam : 1;
     const params = buildApiParams(requestPage);
 
@@ -245,14 +200,12 @@ export default function DishesPage() {
     setAccumulatedDishes(items);
     setLoadedPage(1);
 
-    // Kiểm tra kết thúc cho Load More / Infinite Scroll (Slide 12: page * pageSize >= total hoặc items rỗng)
     const reachedEnd = items.length === 0 || 1 >= totalPages || items.length >= total;
     setHasMore(!reachedEnd);
 
     setStatus('ok');
   }, [paginationMode, pageParam, pageSizeParam, buildApiParams]);
 
-  // Kích hoạt fetch khi URL thay đổi
   useEffect(() => {
     fetchPrimaryDishes();
     return () => {
@@ -262,14 +215,7 @@ export default function DishesPage() {
     };
   }, [fetchPrimaryDishes]);
 
-  /**
-   * Tải tiếp trang tiếp theo (Load More & Infinite Scroll)
-   * Tuân thủ nghiêm ngặt Slide 12 & 13:
-   * - Kiểm tra pending và end trước khi gọi
-   * - Đặt pendingRef đồng bộ ngay trước fetch
-   * - Nối data.items vào cuối mảng tích lũy
-   * - Cập nhật nextPage và trạng thái end
-   */
+  // Tải trang kế tiếp cho Load More & Infinite Scroll (Slide 12 & 13)
   const handleLoadNextPage = useCallback(async () => {
     if (pendingRef.current || !hasMore || status !== 'ok') {
       return;
@@ -281,6 +227,9 @@ export default function DishesPage() {
     setLoadMoreError(null);
 
     const params = buildApiParams(nextPage);
+    if (metadata.total > 0) {
+      params.total = metadata.total; // Tối ưu: truyền total đã biết để backend không phải scan COUNT(*) lại toàn bộ DB
+    }
     const result = await apiClient.dishes.list(params);
 
     pendingRef.current = false;
@@ -289,13 +238,12 @@ export default function DishesPage() {
     if (result.isAborted) return;
 
     if (!result.ok) {
-      setLoadMoreError(result.error?.message || 'Lỗi khi tải thêm món ăn. Vui lòng bấm thử lại.');
+      setLoadMoreError(result.error?.message || 'Có lỗi xảy ra khi tải thêm món. Vui lòng thử lại.');
       return;
     }
 
-    const { items = [], total = 0, page = nextPage, totalPages = 0 } = result.data || {};
+    const { items = [], page = nextPage, totalPages = 0 } = result.data || {};
 
-    // Nối các món mới vào danh sách tích lũy (Slide 12: [...oldItems, ...newItems])
     setAccumulatedDishes((prev) => {
       const existingIds = new Set(prev.map((d) => d.id));
       const freshItems = items.filter((d) => !existingIds.has(d.id));
@@ -304,16 +252,13 @@ export default function DishesPage() {
 
     setLoadedPage(page);
 
-    // Điều kiện kết thúc (Slide 12: page * pageSize >= total hoặc items rỗng)
     const isNowEnd = items.length === 0 || page >= totalPages;
     if (isNowEnd) {
       setHasMore(false);
     }
   }, [loadedPage, hasMore, status, buildApiParams]);
 
-  /**
-   * Cài đặt IntersectionObserver cho Infinite Scroll (Slide 13)
-   */
+  // IntersectionObserver cho Infinite Scroll (Slide 13)
   useEffect(() => {
     if (paginationMode !== 'infinite') return;
     if (!hasMore || loadingMore || status !== 'ok') return;
@@ -329,8 +274,8 @@ export default function DishesPage() {
       },
       {
         root: null,
-        rootMargin: '200px 0px', // Đọc trước 200px trước khi chạm đáy (Slide 13)
-        threshold: 0.05,
+        rootMargin: '600px 0px',
+        threshold: 0.01,
       }
     );
 
@@ -341,11 +286,10 @@ export default function DishesPage() {
     };
   }, [paginationMode, hasMore, loadingMore, status, handleLoadNextPage]);
 
-  // CẬP NHẬT URL KHI THAY ĐỔI TIÊU CHÍ (Slide 14 & 15)
+  // Cập nhật tham số trên URL
   const updateUrlParams = (changes = {}, resetPage = true) => {
     const nextParams = new URLSearchParams(searchParams);
 
-    // Áp dụng các thay đổi mới
     Object.entries(changes).forEach(([key, val]) => {
       if (val === undefined || val === null || String(val).trim() === '') {
         nextParams.delete(key);
@@ -354,7 +298,6 @@ export default function DishesPage() {
       }
     });
 
-    // Reset về trang 1 khi tìm lại hoặc đổi bộ lọc (Slide 15)
     if (resetPage) {
       nextParams.delete('page');
     }
@@ -362,78 +305,61 @@ export default function DishesPage() {
     setSearchParams(nextParams);
   };
 
-  // Submit form tìm kiếm
+  // Real-time debounced typing filter cho ô tìm kiếm thực đơn (Ảnh 4)
+  useEffect(() => {
+    if (searchInput === qParam) return;
+
+    const timer = setTimeout(() => {
+      updateUrlParams({ q: searchInput }, true);
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [searchInput, qParam]);
+
+  // Submit tìm kiếm
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-
-    // Slide 21: Với fulltext và fuzzy, q trim rỗng là không hợp lệ
-    if ((modeParam === 'fulltext' || modeParam === 'fuzzy') && !searchInput.trim()) {
-      alert(`Chế độ ${modeParam === 'fulltext' ? 'Toàn văn (FTS)' : 'Gần đúng (Fuzzy)'} yêu cầu nhập từ khóa tìm kiếm.`);
-      return;
-    }
-
     updateUrlParams(
       {
         q: searchInput,
-        category: modeParam === 'advanced' ? categoryInput : '',
-        minPrice: modeParam === 'advanced' ? minPriceInput : '',
-        maxPrice: modeParam === 'advanced' ? maxPriceInput : '',
-        available: modeParam === 'advanced' ? availableInput : '',
-        sortBy: sortByInput,
-        sortOrder: sortOrderInput,
-        pageSize: pageSizeInput,
+        category: showAdvanced ? categoryInput : '',
+        minPrice: showAdvanced ? minPriceInput : '',
+        maxPrice: showAdvanced ? maxPriceInput : '',
+        available: showAdvanced ? availableInput : '',
+        advanced: showAdvanced ? 'true' : '',
       },
       true
     );
   };
 
-  // Đổi chế độ tìm kiếm
-  const handleModeChange = (nextMode) => {
-    let nextSortBy = sortByInput;
-    let nextSortOrder = sortOrderInput;
+  // Đổi cách hiển thị phân trang
+  const handlePaginationModeChange = (modeId) => {
+    updateUrlParams({ paginationMode: modeId }, true);
+  };
 
-    if (nextMode === 'fulltext') {
-      nextSortBy = 'rank';
-      nextSortOrder = 'desc';
-    } else if (nextMode === 'fuzzy') {
-      nextSortBy = 'similarity';
-      nextSortOrder = 'desc';
-    } else if (sortByInput === 'rank' || sortByInput === 'similarity') {
-      nextSortBy = 'id';
-      nextSortOrder = 'asc';
-    }
-
-    setSortByInput(nextSortBy);
-    setSortOrderInput(nextSortOrder);
-
+  // Đổi sắp xếp
+  const handleSortChange = (e) => {
+    const selected = SORT_OPTIONS.find((opt) => opt.id === e.target.value) || SORT_OPTIONS[0];
     updateUrlParams(
       {
-        mode: nextMode,
-        sortBy: nextSortBy,
-        sortOrder: nextSortOrder,
+        sortBy: selected.sortBy,
+        sortOrder: selected.sortOrder,
       },
-      true
+      false
     );
   };
 
-  // Đổi chế độ phân trang UI (Numbered, Load More, Infinite Scroll)
-  const handlePaginationModeChange = (nextMode) => {
-    updateUrlParams({ paginationMode: nextMode }, true);
-  };
-
-  // Xóa toàn bộ điều kiện lọc (Slide 15)
+  // Xóa toàn bộ điều kiện lọc
   const handleClearAll = () => {
     setSearchInput('');
     setCategoryInput('');
     setMinPriceInput('');
     setMaxPriceInput('');
     setAvailableInput('');
-    setSortByInput('id');
-    setSortOrderInput('asc');
+    setShowAdvanced(false);
 
     setSearchParams({
       paginationMode,
-      mode: 'basic',
     });
   };
 
@@ -443,41 +369,48 @@ export default function DishesPage() {
       return;
     }
     updateUrlParams({ page: targetPage }, false);
-    // Cuộn mượt lên đầu danh sách món ăn
     const menuEl = document.getElementById('menu-dishes-grid');
     if (menuEl) {
       menuEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
-  // Quyết định danh sách hiển thị tuỳ theo UI Mode
   const displayedDishes = paginationMode === 'numbers' ? dishes : accumulatedDishes;
 
-  // Tính toán các trang cần hiển thị trong Pager (Numbered Pagination)
+  // Xác định lựa chọn sắp xếp hiện tại
+  const currentSortId =
+    SORT_OPTIONS.find(
+      (opt) => opt.sortBy === sortByParam && opt.sortOrder === sortOrderParam
+    )?.id || 'default';
+
+  const hasActiveFilters = Boolean(
+    qParam || categoryParam || minPriceParam || maxPriceParam || availableParam
+  );
+
+  // Render các số trang trong Pager (Ảnh 2: Đồng bộ kích thước và style các nút)
   const renderPageNumbers = () => {
     const { page, totalPages } = metadata;
     if (totalPages <= 1) return null;
 
     const pages = [];
     for (let p = 1; p <= totalPages; p++) {
-      if (
-        p === 1 ||
-        p === totalPages ||
-        (p >= page - 1 && p <= page + 1)
-      ) {
+      if (p === 1 || p === totalPages || (p >= page - 1 && p <= page + 1)) {
         pages.push(p);
       } else if (p === page - 2 || p === page + 2) {
         pages.push('gap');
       }
     }
 
-    // Loại bỏ gap trùng lặp
     const deduped = pages.filter((item, idx, arr) => !(item === 'gap' && arr[idx - 1] === 'gap'));
 
     return deduped.map((item, idx) => {
       if (item === 'gap') {
         return (
-          <span key={`gap-${idx}`} className="pager-gap" aria-hidden="true">
+          <span
+            key={`gap-${idx}`}
+            className="w-8 h-10 flex items-center justify-center text-sand-dim font-bold select-none text-xs sm:text-sm"
+            aria-hidden="true"
+          >
             …
           </span>
         );
@@ -489,7 +422,11 @@ export default function DishesPage() {
           type="button"
           onClick={() => handlePageSelect(item)}
           disabled={status === 'loading'}
-          className={isCurrent ? 'is-current' : ''}
+          className={`min-w-[40px] h-10 px-2 flex items-center justify-center rounded-xl text-xs sm:text-sm font-bold border transition-all ${
+            isCurrent
+              ? 'bg-brand text-white border-brand shadow-sm font-extrabold'
+              : 'bg-white text-sand hover:text-cream hover:bg-cream-soft/60 border-black/10 shadow-2xs'
+          }`}
           aria-current={isCurrent ? 'page' : undefined}
           aria-label={`Trang ${item}`}
         >
@@ -500,47 +437,27 @@ export default function DishesPage() {
   };
 
   return (
-    <div id="menu-container" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      {/* HEADER & TỔNG QUAN TỐI ƯU HOÁ TỐC ĐỘ */}
-      <header className="space-y-3 pb-6 border-b border-[rgba(0,0,0,0.08)]">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="eyebrow mb-1">Thực Đơn Món Ăn</div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-cream">
-              Khám Phá Hương Vị Độc Quyền
-            </h1>
-          </div>
-
-          {/* Badge tối ưu hóa tốc độ tải trang */}
-          <div className="flex flex-col items-start md:items-end gap-1.5">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Tối ưu: Server-side Pagination & Lazy Loading
-            </span>
-            <span className="text-[11px] text-sand-dim">
-              Cơ sở dữ liệu: <strong className="text-cream">1.000+ món ăn</strong> trong PostgreSQL (Supabase)
-            </span>
-          </div>
+    <div id="menu-container" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
+      {/* HEADER TỐI GIẢN — DÀNH RIÊNG CHO KHÁCH HÀNG (ĐÃ LOẠI BỎ TEXT TECH Ở ẢNH 1) */}
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-[rgba(0,0,0,0.08)]">
+        <div>
+          <div className="eyebrow mb-1">Thực Đơn Nhà Hàng</div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-cream">
+            Khám Phá Hương Vị Độc Quyền
+          </h1>
+          <p className="text-xs sm:text-sm text-sand-dim mt-1">
+            Gà rán giòn tan, burger nóng hổi cùng đa dạng các món ăn kèm và thức uống hấp dẫn.
+          </p>
         </div>
-      </header>
 
-      {/* KHỐI 1: CHỌN CHẾ ĐỘ PHÂN TRANG (3 KIỂU HIỂN THỊ UI - SLIDE 11, 34) */}
-      <section className="bg-white rounded-2xl p-4 sm:p-5 border border-[rgba(0,0,0,0.08)] shadow-sm space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-brand/10 text-brand grid place-items-center font-bold text-sm">
-              UI
-            </span>
-            <div>
-              <h2 className="text-sm font-bold text-cream">Kiểu Hiển Thị Phân Trang (3 Modes)</h2>
-              <p className="text-xs text-sand-dim">
-                Cùng sử dụng chung API phân trang phía máy chủ theo chuẩn Slide 11
-              </p>
-            </div>
-          </div>
-
-          {/* Segmented Control cho 3 mode UI */}
-          <div className="inline-flex p-1 bg-ink-850 rounded-xl border border-[rgba(0,0,0,0.06)] self-start sm:self-auto">
+        {/* ẢNH 2: CHỈ HIỂN THỊ CÁC NÚT CHUYỂN ĐỔI PHÂN TRANG (TỐI GIẢN, KHÔNG HIỆN THÔNG TIN TECH) */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="text-xs text-sand font-medium hidden md:inline">Xem theo:</span>
+          <div
+            className="inline-flex p-1 bg-ink-850 rounded-xl border border-[rgba(0,0,0,0.06)]"
+            role="group"
+            aria-label="Kiểu hiển thị phân trang"
+          >
             {PAGINATION_MODES.map((pm) => {
               const isActive = paginationMode === pm.id;
               return (
@@ -548,7 +465,7 @@ export default function DishesPage() {
                   key={pm.id}
                   type="button"
                   onClick={() => handlePaginationModeChange(pm.id)}
-                  className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                     isActive
                       ? 'bg-white text-brand shadow-sm border border-[rgba(0,0,0,0.08)]'
                       : 'text-sand hover:text-cream'
@@ -562,82 +479,32 @@ export default function DishesPage() {
             })}
           </div>
         </div>
+      </header>
 
-        {/* Chú thích mode phân trang đang kích hoạt */}
-        <div className="text-xs text-sand bg-ink-900 px-3 py-2 rounded-xl flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <strong className="text-cream">
-              {PAGINATION_MODES.find((m) => m.id === paginationMode)?.badge}:
-            </strong>{' '}
-            {PAGINATION_MODES.find((m) => m.id === paginationMode)?.desc}
-          </span>
-          <span className="font-mono text-[11px] text-brand">
-            {paginationMode === 'numbers' && `Trang ${metadata.page} / ${metadata.totalPages || 1}`}
-            {paginationMode === 'loadmore' && `Đã tải ${displayedDishes.length} / ${metadata.total} món`}
-            {paginationMode === 'infinite' && `Đã cuộn ${displayedDishes.length} / ${metadata.total} món`}
-          </span>
-        </div>
-      </section>
-
-      {/* KHỐI 2: BỘ TÌM KIẾM 4 CHẾ ĐỘ & BỘ LỌC (SLIDE 21, 37) */}
-      <section className="bg-white rounded-2xl p-5 sm:p-6 border border-[rgba(0,0,0,0.08)] shadow-sm space-y-5">
-        {/* Thanh chọn 4 chế độ tìm kiếm */}
-        <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-sand">
-            Chế độ tìm kiếm (Search Mode - Slide 37)
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {SEARCH_MODES.map((m) => {
-              const isSelected = modeParam === m.id;
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => handleModeChange(m.id)}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    isSelected
-                      ? 'border-brand bg-brand/[0.04] text-cream ring-1 ring-brand'
-                      : 'border-[rgba(0,0,0,0.08)] bg-ink-900 text-sand hover:bg-white hover:border-sand'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold text-cream flex items-center gap-1.5">
-                      <Icon name={m.icon} cls="w-3.5 h-3.5 text-brand" />
-                      {m.name}
-                    </span>
-                    {isSelected && <Icon name="check" cls="w-3.5 h-3.5 text-brand" />}
-                  </div>
-                  <p className="text-[11px] text-sand-dim line-clamp-1 leading-snug">{m.desc}</p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Form tìm kiếm & các trường lọc */}
+      {/* ẢNH 3: BỘ TÌM KIẾM TÍCH HỢP & NÚT LỰA CHỌN NÂNG CAO (TỐI GIẢN, TRẢI NGHIỆM NGƯỜI DÙNG THẬT) */}
+      <section className="bg-white rounded-2xl p-4 sm:p-5 border border-[rgba(0,0,0,0.08)] shadow-sm space-y-4">
         <form onSubmit={handleSearchSubmit} className="space-y-4">
+          {/* Thanh tìm kiếm chính (Ảnh 4: Sửa lỗi UI & Tích hợp Typing Filter theo thời gian thực) */}
           <div className="flex flex-col sm:flex-row gap-2.5">
-            {/* Ô nhập từ khóa q */}
-            <div className="field-icon flex-grow min-w-0">
-              <Icon name="search" cls="w-4 h-4" />
+            <div className="relative flex-grow min-w-0">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-sand-dim">
+                <Icon name="search" cls="w-4 h-4" />
+              </div>
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder={
-                  modeParam === 'fulltext'
-                    ? 'Nhập từ khóa tìm toàn văn trên tên và mô tả (bắt buộc)...'
-                    : modeParam === 'fuzzy'
-                    ? 'Nhập từ khóa tìm gần đúng, bắt lỗi chính tả (bắt buộc)...'
-                    : 'Tìm theo tên món ăn...'
-                }
-                className="field text-xs sm:text-sm w-full"
+                placeholder="Tìm tên món ăn, hương vị, mô tả..."
+                className="field text-xs sm:text-sm w-full pl-10 pr-10"
               />
               {searchInput && (
                 <button
                   type="button"
-                  onClick={() => setSearchInput('')}
-                  className="text-sand hover:text-cream p-1"
+                  onClick={() => {
+                    setSearchInput('');
+                    updateUrlParams({ q: '' }, true);
+                  }}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-sand-dim hover:text-cream transition-colors"
                   aria-label="Xóa từ khóa"
                 >
                   <Icon name="x" cls="w-3.5 h-3.5" />
@@ -645,50 +512,54 @@ export default function DishesPage() {
               )}
             </div>
 
-            {/* Nút hành động */}
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Nút bật/tắt Lựa chọn nâng cao */}
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className={`btn h-12 px-4 text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                  showAdvanced
+                    ? 'bg-brand/10 text-brand border border-brand/30'
+                    : 'btn-ghost text-sand hover:text-cream'
+                }`}
+                aria-expanded={showAdvanced}
+              >
+                <Icon name="list" cls="w-4 h-4" />
+                <span>Nâng cao</span>
+                {showAdvanced && <span className="w-1.5 h-1.5 rounded-full bg-brand" />}
+              </button>
+
+              {/* Nút Tìm kiếm */}
               <button
                 type="submit"
                 disabled={status === 'loading'}
                 className="btn btn-primary h-12 px-6 justify-center flex-1 sm:flex-initial"
               >
-                <Icon name="search" cls="w-4 h-4" />
                 <span>Tìm Kiếm</span>
               </button>
 
-              {(qParam ||
-                categoryParam ||
-                minPriceParam ||
-                maxPriceParam ||
-                availableParam ||
-                modeParam !== 'basic') && (
+              {/* Nút Xóa bộ lọc khi có điều kiện đang áp dụng */}
+              {hasActiveFilters && (
                 <button
                   type="button"
                   onClick={handleClearAll}
                   disabled={status === 'loading'}
-                  className="btn btn-ghost h-12 px-4"
-                  title="Xóa toàn bộ điều kiện lọc và đặt lại trang 1"
+                  className="btn btn-ghost h-12 px-3 text-sand hover:text-cream"
+                  title="Xóa bộ lọc"
                 >
                   <Icon name="x" cls="w-4 h-4" />
-                  <span>Xóa Lọc</span>
                 </button>
               )}
             </div>
           </div>
 
-          {/* VÙNG LỌC NÂNG CAO (Chỉ hiện khi mode === 'advanced' theo Slide 26 & 28) */}
-          {modeParam === 'advanced' && (
-            <div className="p-4 rounded-xl bg-ink-850 border border-[rgba(0,0,0,0.06)] space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-cream uppercase tracking-wider flex items-center gap-1.5">
-                  <Icon name="list" cls="w-3.5 h-3.5 text-brand" />
-                  Các Tiêu Chí Nâng Cao (Kết hợp AND - Slide 26)
-                </span>
-                <span className="text-[11px] text-sand-dim">Bỏ trống trường nào sẽ bỏ qua trường đó</span>
-              </div>
+          {/* KHU VỰC BỘ LỌC NÂNG CAO (Chỉ mở ra khi người dùng bấm lựa chọn 'Nâng cao') */}
+          {showAdvanced && (
+            <div className="p-4 rounded-xl bg-ink-850 border border-[rgba(0,0,0,0.06)] space-y-3 transition-all animate-fadeIn">
+              <div className="text-xs font-bold text-cream">Bộ lọc nâng cao theo tiêu chí:</div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* 1. Category */}
+                {/* 1. Danh mục */}
                 <div>
                   <label className="block text-xs font-semibold text-sand mb-1">Danh mục món</label>
                   <select
@@ -697,211 +568,105 @@ export default function DishesPage() {
                     className="field text-xs w-full h-10"
                   >
                     <option value="">Tất cả danh mục</option>
-                    {categories.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
+                    {categories.map((c) => {
+                      const catName = typeof c === 'object' && c !== null ? c.name : String(c);
+                      return (
+                        <option key={catName} value={catName}>
+                          {catName}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
-                {/* 2. Min Price (Slide 27: minPrice=0 là cận hợp lệ) */}
+                {/* 2. Giá tối thiểu */}
                 <div>
-                  <label className="block text-xs font-semibold text-sand mb-1">
-                    Giá từ (VNĐ) <span className="text-sand-dim font-normal">- hỗ trợ 0đ</span>
-                  </label>
+                  <label className="block text-xs font-semibold text-sand mb-1">Giá từ (VNĐ)</label>
                   <input
                     type="number"
                     min="0"
-                    step="1000"
+                    step="5000"
                     value={minPriceInput}
                     onChange={(e) => setMinPriceInput(e.target.value)}
-                    placeholder="VD: 0 hoặc 50000"
+                    placeholder="VD: 0 hoặc 50.000"
                     className="field text-xs w-full h-10"
                   />
                 </div>
 
-                {/* 3. Max Price */}
+                {/* 3. Giá tối đa */}
                 <div>
                   <label className="block text-xs font-semibold text-sand mb-1">Giá đến (VNĐ)</label>
                   <input
                     type="number"
                     min="0"
-                    step="1000"
+                    step="5000"
                     value={maxPriceInput}
                     onChange={(e) => setMaxPriceInput(e.target.value)}
-                    placeholder="VD: 150000"
+                    placeholder="VD: 150.000"
                     className="field text-xs w-full h-10"
                   />
                 </div>
 
-                {/* 4. Available (Slide 27: available=false là điều kiện có nghĩa) */}
+                {/* 4. Trạng thái món */}
                 <div>
-                  <label className="block text-xs font-semibold text-sand mb-1">Trạng thái bán</label>
+                  <label className="block text-xs font-semibold text-sand mb-1">Tình trạng phục vụ</label>
                   <select
                     value={availableInput}
                     onChange={(e) => setAvailableInput(e.target.value)}
                     className="field text-xs w-full h-10"
                   >
-                    <option value="">Tất cả trạng thái</option>
-                    <option value="true">Còn bán (Available)</option>
-                    <option value="false">Hết hàng (Not available - Slide 27)</option>
+                    <option value="">Tất cả</option>
+                    <option value="true">Đang phục vụ</option>
+                    <option value="false">Tạm hết món</option>
                   </select>
                 </div>
               </div>
             </div>
           )}
 
-          {/* DÒNG TIỆN ÍCH: SẮP XẾP & KÍCH THƯỚC TRANG (Slide 8 & 38) */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[rgba(0,0,0,0.06)] text-xs">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Sắp xếp theo */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-sand font-medium">Sắp xếp:</span>
-                <select
-                  value={sortByInput}
-                  onChange={(e) => {
-                    const nextSb = e.target.value;
-                    setSortByInput(nextSb);
-                    updateUrlParams({ sortBy: nextSb }, false);
-                  }}
-                  className="bg-ink-850 border border-[rgba(0,0,0,0.1)] rounded-lg px-2.5 py-1 font-semibold text-cream"
-                >
-                  <option value="id">Mã món (Mặc định)</option>
-                  <option value="name">Tên món</option>
-                  <option value="price">Giá bán</option>
-                  <option value="createdAt">Mới nhất</option>
-                  {modeParam === 'fulltext' && <option value="rank">Độ phù hợp (ts_rank FTS)</option>}
-                  {modeParam === 'fuzzy' && (
-                    <option value="similarity">Độ tương đồng (pg_trgm)</option>
-                  )}
-                </select>
-              </div>
-
-              {/* Chiều sắp xếp */}
-              <div className="flex items-center gap-1.5">
-                <select
-                  value={sortOrderInput}
-                  onChange={(e) => {
-                    const nextSo = e.target.value;
-                    setSortOrderInput(nextSo);
-                    updateUrlParams({ sortOrder: nextSo }, false);
-                  }}
-                  className="bg-ink-850 border border-[rgba(0,0,0,0.1)] rounded-lg px-2.5 py-1 font-semibold text-cream"
-                >
-                  <option value="asc">Tăng dần (A-Z, Giá thấp - cao)</option>
-                  <option value="desc">Giảm dần (Z-A, Giá cao - thấp)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Số món mỗi trang */}
-            <div className="flex items-center gap-2">
-              <span className="text-sand">Hiển thị mỗi trang:</span>
-              <div className="inline-flex gap-1">
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => {
-                      setPageSizeInput(size);
-                      updateUrlParams({ pageSize: size }, true);
-                    }}
-                    className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                      pageSizeParam === size
-                        ? 'bg-brand text-white shadow-xs'
-                        : 'bg-ink-850 text-sand hover:text-cream'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* DÒNG THỐNG KÊ GỌN GÀNG (ĐÃ BỎ SẮP XẾP Ở MENU THEO YÊU CẦU) */}
+          <div className="pt-2 border-t border-[rgba(0,0,0,0.06)] text-xs text-sand">
+            {status === 'ok' && (
+              <span>
+                Tìm thấy <strong className="text-cream font-bold">{metadata.total.toLocaleString()}</strong> món
+                {qParam && (
+                  <span>
+                    {' '}cho &quot;<strong className="text-brand">{qParam}</strong>&quot;
+                  </span>
+                )}
+                {categoryParam && (
+                  <span>
+                    {' '}trong <strong>{categoryParam}</strong>
+                  </span>
+                )}
+              </span>
+            )}
           </div>
         </form>
       </section>
 
-      {/* THÔNG BÁO LỖI NGHIỆP VỤ / VALIDATION (SLIDE 10 & 27: VALIDATION_FAILED) */}
+      {/* THÔNG BÁO LỖI NẾU BỘ LỌC KHÔNG HỢP LỆ */}
       {status === 'error' && errorInfo.message && (
-        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-900 space-y-2">
-          <div className="flex items-center gap-2 font-bold text-sm">
-            <Icon name="alert" cls="w-5 h-5 text-red-600" />
-            <span>Lỗi dữ liệu tìm kiếm hoặc phân trang (VALIDATION_FAILED)</span>
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-900 space-y-1">
+          <div className="flex items-center gap-2 font-bold text-xs">
+            <Icon name="alert" cls="w-4 h-4 text-red-600" />
+            <span>Thông tin tìm kiếm chưa hợp lệ:</span>
           </div>
           <p className="text-xs text-red-800">{errorInfo.message}</p>
           {errorInfo.fields && (
-            <ul className="text-xs list-disc list-inside space-y-1 text-red-700 bg-white/60 p-2.5 rounded-lg border border-red-100">
+            <ul className="text-xs list-disc list-inside space-y-0.5 text-red-700">
               {Object.entries(errorInfo.fields).map(([field, msg]) => (
-                <li key={field}>
-                  <strong>{field}:</strong> {msg}
-                </li>
+                <li key={field}>{msg}</li>
               ))}
             </ul>
           )}
-          <button
-            type="button"
-            onClick={fetchPrimaryDishes}
-            className="btn btn-sm bg-red-600 text-white hover:bg-red-700 mt-2"
-          >
-            Thử Lại
-          </button>
-        </div>
-      )}
-
-      {/* THANH THỐNG KÊ KẾT QUẢ TÌM KIẾM */}
-      {status === 'ok' && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-sand px-1">
-          <div>
-            Tìm thấy <strong className="text-cream font-bold">{metadata.total.toLocaleString()}</strong> món ăn
-            {qParam && (
-              <span>
-                {' '}
-                với từ khóa &quot;<strong className="text-brand">{qParam}</strong>&quot;
-              </span>
-            )}
-            {categoryParam && modeParam === 'advanced' && (
-              <span>
-                {' '}
-                thuộc danh mục &quot;<strong className="text-cream">{categoryParam}</strong>&quot;
-              </span>
-            )}
-            {minPriceParam && modeParam === 'advanced' && (
-              <span>
-                {' '}
-                giá từ <strong>{Number(minPriceParam).toLocaleString()}đ</strong>
-              </span>
-            )}
-            {maxPriceParam && modeParam === 'advanced' && (
-              <span>
-                {' '}
-                đến <strong>{Number(maxPriceParam).toLocaleString()}đ</strong>
-              </span>
-            )}
-            {availableParam === 'false' && modeParam === 'advanced' && (
-              <span className="text-ember font-semibold"> (Chỉ món hết hàng)</span>
-            )}
-          </div>
-
-          <div className="text-sand-dim font-mono">
-            {paginationMode === 'numbers' ? (
-              <span>
-                Trang {metadata.page} / {metadata.totalPages || 1} (LIMIT {metadata.pageSize} OFFSET{' '}
-                {(metadata.page - 1) * metadata.pageSize})
-              </span>
-            ) : (
-              <span>
-                Hiển thị {displayedDishes.length} / {metadata.total} món
-              </span>
-            )}
-          </div>
         </div>
       )}
 
       {/* TRẠNG THÁI LOADING BAN ĐẦU */}
-      {status === 'loading' && <LoadingView message="Đang tải danh sách món ăn từ máy chủ..." />}
+      {status === 'loading' && <LoadingView message="Đang tải thực đơn món ăn..." />}
 
-      {/* DANH SÁCH MÓN ĂN (GRID 3 CỘT) */}
+      {/* DANH SÁCH MÓN ĂN (GRID 3 CỘT ĐẸP MẮT) */}
       {status === 'ok' && displayedDishes.length > 0 && (
         <>
           <div
@@ -909,10 +674,7 @@ export default function DishesPage() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
           >
             {displayedDishes.map((dish) => {
-              const thumbUrl =
-                dish.images && dish.images.length > 0
-                  ? resolveImageUrl(dish.images[0].imageUrl)
-                  : null;
+              const thumbUrl = getDishImageUrl(dish);
 
               return (
                 <Link
@@ -920,54 +682,42 @@ export default function DishesPage() {
                   to={`/dishes/${dish.id}`}
                   className="dish-card group block transition-all"
                 >
-                  {/* Khung ảnh có aspect-ratio cố định để chống CLS và lazy-loading (Tối ưu LCP/CLS) */}
+                  {/* Khung ảnh có aspect-ratio cố định chống CLS & lazy loading */}
                   <div className="dish-frame relative overflow-hidden rounded-2xl bg-ink-850">
-                    {thumbUrl ? (
-                      <img
-                        src={thumbUrl}
-                        alt={dish.name}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-[#f4eee6] text-sand-dim gap-2 p-4 select-none">
-                        <div className="w-12 h-12 rounded-2xl bg-white border border-[rgba(0,0,0,0.08)] grid place-items-center text-brand shadow-sm">
-                          <Icon name="pan" cls="w-6 h-6 stroke-[1.8]" />
-                        </div>
-                        <span className="text-[11px] font-semibold tracking-wider uppercase text-sand/60">
-                          Chờ cập nhật ảnh
+                    <img
+                      src={thumbUrl}
+                      alt={dish.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = getCategoryImageUrl(dish.category);
+                      }}
+                    />
+
+                    {/* Badge trạng thái khi tạm hết món (đã bỏ hiển thị danh mục theo yêu cầu) */}
+                    {!dish.isAvailable && (
+                      <div className="absolute top-3 left-3">
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-black/75 text-white backdrop-blur-sm">
+                          Tạm hết
                         </span>
                       </div>
                     )}
-
-                    {/* Tag danh mục & Trạng thái */}
-                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                      {dish.category && (
-                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-white/90 backdrop-blur-sm text-cream shadow-xs">
-                          {dish.category}
-                        </span>
-                      )}
-                      {!dish.isAvailable && (
-                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-black/75 text-white backdrop-blur-sm">
-                          Hết món
-                        </span>
-                      )}
-                    </div>
 
                     <span className="dish-go">
                       <Icon name="arrow-up-right" cls="w-4 h-4" sw={2.2} />
                     </span>
                   </div>
 
-                  {/* Thông tin chi tiết món ăn */}
+                  {/* Thông tin món */}
                   <div className="pt-4 space-y-1.5">
                     <div className="flex items-start justify-between gap-3">
                       <h3 className="dish-name line-clamp-1 text-base font-bold text-cream group-hover:text-brand transition-colors">
                         {dish.name}
                       </h3>
                       <span className="dish-price font-bold text-brand whitespace-nowrap">
-                        {Number(dish.price).toLocaleString('vi-VN')} đ
+                        {Number(dish.price).toLocaleString('vi-VN')}&nbsp;đ
                       </span>
                     </div>
 
@@ -977,12 +727,11 @@ export default function DishesPage() {
                       </p>
                     )}
 
-                    <div className="flex items-center justify-between pt-1 text-[11px] font-mono text-sand-dim">
-                      <span>Mã: {dish.code || `DISH${dish.id}`}</span>
-                      {dish.chefs && dish.chefs.length > 0 && dish.chefs[0]?.chef && (
+                    {dish.chefs && dish.chefs.length > 0 && dish.chefs[0]?.chef && (
+                      <div className="pt-1 text-[11px] font-mono text-sand-dim">
                         <span>Bếp: {dish.chefs[0].chef.name}</span>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </Link>
               );
@@ -990,74 +739,79 @@ export default function DishesPage() {
           </div>
 
           {/* ================================================================= */}
-          {/* PHẦN HIỂN THỊ PHÂN TRANG THEO 3 KIỂU (SLIDE 11, 12, 13) */}
+          {/* PHÂN TRANG (CHỈ CÁC NÚT VÀ ĐIỀU HƯỚNG THEO MODE ĐÃ CHỌN) */}
           {/* ================================================================= */}
 
-          {/* KIỂU 1: PHÂN TRANG SỐ (PAGE NUMBERING - SLIDE 8, 9, 10, 11) */}
+          {/* 1. SỐ TRANG (PAGE NUMBERING - ĐỒNG BỘ UI THEO ẢNH 2, BỎ DÒNG TEXT DƯỚI) */}
           {paginationMode === 'numbers' && metadata.totalPages > 1 && (
-            <div className="pt-8 border-t border-[rgba(0,0,0,0.08)] flex flex-col items-center justify-center gap-3">
-              <nav className="pager" aria-label="Phân trang thực đơn">
-                {/* Nút Về đầu */}
+            <div className="pt-8 border-t border-[rgba(0,0,0,0.08)] flex justify-center">
+              <nav className="flex items-center justify-center gap-1.5 flex-wrap" aria-label="Phân trang thực đơn">
                 <button
                   type="button"
                   onClick={() => handlePageSelect(1)}
                   disabled={metadata.page <= 1 || status === 'loading'}
-                  className="pager-nav"
+                  className={`w-10 h-10 flex items-center justify-center rounded-xl border text-sm font-bold transition-all ${
+                    metadata.page <= 1
+                      ? 'opacity-30 cursor-not-allowed bg-ink-850/40 text-sand-dim border-transparent'
+                      : 'bg-white text-sand hover:text-cream hover:bg-cream-soft/60 border-black/10 shadow-2xs'
+                  }`}
                   aria-label="Về trang đầu"
                   title="Về trang đầu"
                 >
                   «
                 </button>
 
-                {/* Nút Trang trước */}
                 <button
                   type="button"
                   onClick={() => handlePageSelect(metadata.page - 1)}
                   disabled={metadata.page <= 1 || status === 'loading'}
-                  className="pager-nav"
+                  className={`w-10 h-10 flex items-center justify-center rounded-xl border text-sm font-bold transition-all ${
+                    metadata.page <= 1
+                      ? 'opacity-30 cursor-not-allowed bg-ink-850/40 text-sand-dim border-transparent'
+                      : 'bg-white text-sand hover:text-cream hover:bg-cream-soft/60 border-black/10 shadow-2xs'
+                  }`}
                   aria-label="Trang trước"
                   title="Trang trước"
                 >
                   <Icon name="chevron-left" cls="w-4 h-4" />
                 </button>
 
-                {/* Các nút số trang có gap ... */}
                 {renderPageNumbers()}
 
-                {/* Nút Trang kế tiếp */}
                 <button
                   type="button"
                   onClick={() => handlePageSelect(metadata.page + 1)}
                   disabled={metadata.page >= metadata.totalPages || status === 'loading'}
-                  className="pager-nav"
+                  className={`w-10 h-10 flex items-center justify-center rounded-xl border text-sm font-bold transition-all ${
+                    metadata.page >= metadata.totalPages
+                      ? 'opacity-30 cursor-not-allowed bg-ink-850/40 text-sand-dim border-transparent'
+                      : 'bg-white text-sand hover:text-cream hover:bg-cream-soft/60 border-black/10 shadow-2xs'
+                  }`}
                   aria-label="Trang kế tiếp"
                   title="Trang kế tiếp"
                 >
                   <Icon name="chevron-right" cls="w-4 h-4" />
                 </button>
 
-                {/* Nút Đến trang cuối */}
                 <button
                   type="button"
                   onClick={() => handlePageSelect(metadata.totalPages)}
                   disabled={metadata.page >= metadata.totalPages || status === 'loading'}
-                  className="pager-nav"
+                  className={`w-10 h-10 flex items-center justify-center rounded-xl border text-sm font-bold transition-all ${
+                    metadata.page >= metadata.totalPages
+                      ? 'opacity-30 cursor-not-allowed bg-ink-850/40 text-sand-dim border-transparent'
+                      : 'bg-white text-sand hover:text-cream hover:bg-cream-soft/60 border-black/10 shadow-2xs'
+                  }`}
                   aria-label="Đến trang cuối"
                   title="Đến trang cuối"
                 >
                   »
                 </button>
               </nav>
-
-              <p className="text-xs text-sand-dim">
-                Hiển thị món {(metadata.page - 1) * metadata.pageSize + 1} -{' '}
-                {Math.min(metadata.page * metadata.pageSize, metadata.total)} trên tổng số{' '}
-                {metadata.total.toLocaleString()} món
-              </p>
             </div>
           )}
 
-          {/* KIỂU 2: NÚT TẢI THÊM (LOAD MORE - SLIDE 12) */}
+          {/* 2. TẢI THÊM (LOAD MORE) */}
           {paginationMode === 'loadmore' && (
             <div className="pt-8 border-t border-[rgba(0,0,0,0.08)] flex flex-col items-center justify-center gap-3">
               {loadMoreError && (
@@ -1085,31 +839,30 @@ export default function DishesPage() {
                     {loadingMore ? (
                       <span className="flex items-center gap-2">
                         <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Đang tải thêm món...
+                        Đang tải thêm...
                       </span>
                     ) : (
                       <span className="flex items-center gap-2">
                         <Icon name="plus" cls="w-4 h-4" />
-                        Tải thêm món ăn (Trang {loadedPage + 1} / {metadata.totalPages})
+                        Tải thêm món ăn
                       </span>
                     )}
                   </button>
                   <span className="text-xs text-sand-dim">
-                    Đã hiển thị {displayedDishes.length} / {metadata.total} món ăn
+                    Đã hiển thị {displayedDishes.length} / {metadata.total.toLocaleString()} món ăn
                   </span>
                 </div>
               ) : (
-                <div className="text-center py-4 text-xs font-semibold text-sand-dim bg-ink-850 px-6 py-2.5 rounded-full border border-[rgba(0,0,0,0.06)]">
-                  ✔ Đã hiển thị toàn bộ {metadata.total.toLocaleString()} món ăn
+                <div className="text-center py-3 text-xs font-semibold text-sand-dim bg-ink-850 px-6 rounded-full border border-[rgba(0,0,0,0.06)]">
+                  Đã hiển thị toàn bộ {metadata.total.toLocaleString()} món ăn
                 </div>
               )}
             </div>
           )}
 
-          {/* KIỂU 3: CUỘN VÔ TẬN (INFINITE SCROLL - SLIDE 13) */}
+          {/* 3. CUỘN VÔ TẬN (INFINITE SCROLL) */}
           {paginationMode === 'infinite' && (
             <div className="pt-8 border-t border-[rgba(0,0,0,0.08)] flex flex-col items-center justify-center">
-              {/* Sentinel theo dõi cuộn với IntersectionObserver (Slide 13) */}
               <div
                 ref={sentinelRef}
                 id="infinite-scroll-sentinel"
@@ -1117,27 +870,26 @@ export default function DishesPage() {
                 aria-live="polite"
               >
                 {loadingMore && (
-                  <div className="flex items-center gap-2 py-3 px-5 rounded-full bg-white shadow-sm border border-[rgba(0,0,0,0.08)]">
+                  <div className="flex items-center gap-2 py-2.5 px-5 rounded-full bg-white shadow-sm border border-[rgba(0,0,0,0.08)]">
                     <span className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-                    <span className="font-semibold text-cream">Tự động tải thêm trang {loadedPage + 1}...</span>
+                    <span className="font-semibold text-cream">Đang tải thêm món ăn...</span>
                   </div>
                 )}
 
                 {!hasMore && (
-                  <div className="text-center py-3 px-6 rounded-full bg-ink-850 text-sand-dim font-medium border border-[rgba(0,0,0,0.06)]">
-                    ✔ Đã cuộn hết toàn bộ {metadata.total.toLocaleString()} món ăn
+                  <div className="text-center py-2.5 px-6 rounded-full bg-ink-850 text-sand-dim font-medium border border-[rgba(0,0,0,0.06)]">
+                    Đã hiển thị toàn bộ {metadata.total.toLocaleString()} món ăn
                   </div>
                 )}
               </div>
 
-              {/* Lựa chọn fallback cho người dùng bàn phím hoặc khi cuộn chưa kích hoạt (Slide 12 & 13) */}
               {hasMore && !loadingMore && (
                 <button
                   type="button"
                   onClick={handleLoadNextPage}
-                  className="btn btn-ghost text-xs text-sand hover:text-cream mt-2"
+                  className="btn btn-ghost text-xs text-sand hover:text-cream mt-1"
                 >
-                  Cuộn xuống để tải tiếp hoặc bấm vào đây
+                  Bấm vào đây để tải tiếp
                 </button>
               )}
 
@@ -1159,7 +911,7 @@ export default function DishesPage() {
         </>
       )}
 
-      {/* TRẠNG THÁI RỖNG (EMPTY STATE - KHÔNG TÌM THẤY MÓN NÀO) */}
+      {/* TRẠNG THÁI RỖNG */}
       {status === 'ok' && displayedDishes.length === 0 && (
         <div className="card card-pad text-center py-16 space-y-4 bg-white rounded-2xl border border-[rgba(0,0,0,0.08)]">
           <div className="w-16 h-16 rounded-2xl bg-black/[0.03] border border-[rgba(0,0,0,0.08)] grid place-items-center text-sand mx-auto">
@@ -1167,7 +919,7 @@ export default function DishesPage() {
           </div>
           <h3 className="text-xl font-bold text-cream">Không tìm thấy món ăn nào</h3>
           <p className="text-xs text-sand-dim max-w-md mx-auto">
-            Không có món ăn nào thỏa mãn bộ lọc tìm kiếm hiện tại. Bạn có thể thử từ khóa khác hoặc đặt lại bộ lọc.
+            Không có món ăn nào phù hợp với từ khóa hoặc bộ lọc đã chọn. Hãy thử lại với từ khóa khác nhé.
           </p>
           <div className="pt-2">
             <button type="button" onClick={handleClearAll} className="btn btn-primary btn-sm">

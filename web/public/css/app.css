@@ -511,7 +511,7 @@ input[type='search']::-webkit-search-decoration { -webkit-appearance: none; appe
   gap: 6px;
   flex-wrap: wrap;
 }
-.pager a, .pager span {
+.pager a, .pager span, .pager button {
   display: inline-grid;
   place-items: center;
   min-width: 38px;
@@ -528,7 +528,7 @@ input[type='search']::-webkit-search-decoration { -webkit-appearance: none; appe
   flex-shrink: 0;
   white-space: nowrap;
 }
-.pager a:hover {
+.pager a:hover, .pager button:not(:disabled):not(.is-current):hover {
   color: var(--cream);
   background: #f5f1eb;
   border-color: var(--line-strong);
@@ -699,24 +699,26 @@ input[type='search']::-webkit-search-decoration { -webkit-appearance: none; appe
    Phân trang
    ========================================================================== */
 .pager { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
-.pager a, .pager span {
+.pager a, .pager span, .pager button {
   display: inline-grid;
   place-items: center;
-  min-width: 44px;
-  height: 44px;
-  padding: 0 12px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 600;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--sand);
-  border: 1px solid transparent;
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  transition: all 0.2s ease;
+  user-select: none;
 }
-.pager a:hover { color: var(--cream); background: #f0ebe4; border-color: var(--line); }
-.pager .is-current { background: var(--red); color: #fff; box-shadow: 0 10px 22px -10px rgba(192, 7, 7, 0.85); }
-.pager .pager-nav { border-color: var(--line-strong); color: var(--cream); background: #ffffff; }
-.pager .is-disabled { opacity: 0.35; pointer-events: none; }
-.pager .pager-gap { min-width: 24px; padding: 0; color: var(--sand-dim); }
+.pager a:hover, .pager button:not(:disabled):not(.is-current):hover { color: var(--cream); background: #f0ebe4; border-color: var(--line-strong); }
+.pager .is-current { background: var(--red) !important; color: #fff !important; border-color: var(--red) !important; box-shadow: 0 6px 16px -6px rgba(192, 7, 7, 0.7); }
+.pager .pager-nav { border-color: var(--line); color: var(--cream); background: #ffffff; }
+.pager button:disabled, .pager .is-disabled { opacity: 0.35; pointer-events: none; }
+.pager .pager-gap { min-width: 24px; padding: 0; color: var(--sand-dim); border: none; background: transparent; }
 
 /* ==========================================================================
    Chi tiết món

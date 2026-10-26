@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { apiClient, resolveImageUrl } from '../../api/client';
+import { apiClient, resolveImageUrl, getCategoryImageUrl } from '../../api/client';
 import Icon from '../../components/Icon';
 import { ErrorView, LoadingView, NotFoundView } from '../../components/StateViews';
 
@@ -88,10 +88,11 @@ export default function DishDetailPage() {
   }
 
   const images = dish.images || [];
+  const fallbackImg = getCategoryImageUrl(dish.category);
   const mainImg =
     images.length > 0
-      ? resolveImageUrl(images[activeImgIdx]?.imageUrl || images[0].imageUrl)
-      : null;
+      ? resolveImageUrl(images[activeImgIdx]?.imageUrl || images[0].imageUrl) || fallbackImg
+      : fallbackImg;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
@@ -130,6 +131,10 @@ export default function DishDetailPage() {
                 alt={dish.name}
                 className={isSwapping ? 'is-swapping' : ''}
                 loading="eager"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = fallbackImg;
+                }}
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center bg-[#f4eee6] text-sand-dim gap-3 p-8 select-none">
@@ -184,7 +189,7 @@ export default function DishDetailPage() {
               <span className="text-xs uppercase tracking-wider font-semibold text-sand">
                 Giá bán niêm yết
               </span>
-              <div className="price-tag mt-1">
+              <div className="price-tag mt-1 whitespace-nowrap">
                 {Number(dish.price).toLocaleString('vi-VN')}
                 <small>VNĐ</small>
               </div>

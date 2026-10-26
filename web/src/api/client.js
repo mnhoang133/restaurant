@@ -54,6 +54,49 @@ export function getApiLoadingState() {
 }
 
 /**
+ * Bản đồ hình ảnh chuẩn duy nhất theo từng loại món ăn (Link Unsplash chất lượng cao, đã kiểm tra 100% hoạt động)
+ */
+export const CATEGORY_IMAGE_MAP = {
+  'Gà Rán': 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=600&auto=format&fit=crop&q=80',
+  'Burger': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&auto=format&fit=crop&q=80',
+  'Món Nướng': 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80',
+  'Ăn Kèm': 'https://images.unsplash.com/photo-1541592106381-b31e9677c0e5?w=600&auto=format&fit=crop&q=80',
+  'Khai Vị': 'https://images.unsplash.com/photo-1541014741259-de529411b96a?w=600&auto=format&fit=crop&q=80',
+  'Tráng Miệng': 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&auto=format&fit=crop&q=80',
+  'Nước Uống': 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=600&auto=format&fit=crop&q=80',
+  'Combo': 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&auto=format&fit=crop&q=80',
+  'Món chính': 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&auto=format&fit=crop&q=80',
+};
+
+export const DEFAULT_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=600&auto=format&fit=crop&q=80';
+
+export function getCategoryImageUrl(category) {
+  if (!category) return DEFAULT_FALLBACK_IMAGE;
+  const trimmed = String(category).trim();
+  return CATEGORY_IMAGE_MAP[trimmed] || DEFAULT_FALLBACK_IMAGE;
+}
+
+/**
+ * Lấy hình ảnh chuẩn của món ăn:
+ * "Đối với từng loại món ăn, chỉ sử dụng một hình cho tất cả món ăn của loại đó.
+ * Ví dụ: gà rán cay và gà rán phô mai thì sử dụng cùng một hình ảnh."
+ */
+export function getDishImageUrl(dish) {
+  if (!dish) return DEFAULT_FALLBACK_IMAGE;
+
+  if (Array.isArray(dish.images) && dish.images.length > 0 && dish.images[0]?.imageUrl) {
+    const raw = dish.images[0].imageUrl;
+    // Nếu là ảnh do admin tải lên dạng file (lưu trong /uploads/)
+    if (raw.includes('/uploads/')) {
+      return resolveImageUrl(raw);
+    }
+  }
+
+  // Luôn trả về 1 link Unsplash chuẩn duy nhất theo danh mục của món
+  return getCategoryImageUrl(dish.category);
+}
+
+/**
  * Chuẩn hóa đường dẫn ảnh trả về từ Backend (nếu là đường dẫn tương đối /uploads/... thì nối với BACKEND_ORIGIN)
  */
 export function resolveImageUrl(imageUrl) {

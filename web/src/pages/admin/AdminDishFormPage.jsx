@@ -41,6 +41,12 @@ export default function AdminDishFormPage({ mode = 'create' }) {
   const [allChefs, setAllChefs] = useState([]);
   const [allIngredients, setAllIngredients] = useState([]);
 
+  // Lọc real-time (typing filter) & dropdown cho Đầu Bếp & Nguyên Liệu (Ảnh 3)
+  const [chefSearchQuery, setChefSearchQuery] = useState('');
+  const [chefFilterStatus, setChefFilterStatus] = useState('all'); // 'all' | 'selected' | 'unselected'
+  const [ingredientSearchQuery, setIngredientSearchQuery] = useState('');
+  const [ingredientFilterStatus, setIngredientFilterStatus] = useState('all'); // 'all' | 'selected' | 'unselected'
+
   // Submission & validation error states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -165,6 +171,36 @@ export default function AdminDishFormPage({ mode = 'create' }) {
     );
   };
 
+  const filteredChefs = React.useMemo(() => {
+    return allChefs.filter((chef) => {
+      const isSelected = selectedChefIds.includes(chef.id);
+      if (chefFilterStatus === 'selected' && !isSelected) return false;
+      if (chefFilterStatus === 'unselected' && isSelected) return false;
+
+      if (chefSearchQuery.trim()) {
+        const q = chefSearchQuery.trim().toLowerCase();
+        const nameMatch = chef.name && chef.name.toLowerCase().includes(q);
+        const fieldMatch = chef.field && chef.field.toLowerCase().includes(q);
+        return Boolean(nameMatch || fieldMatch);
+      }
+      return true;
+    });
+  }, [allChefs, selectedChefIds, chefFilterStatus, chefSearchQuery]);
+
+  const filteredIngredients = React.useMemo(() => {
+    return allIngredients.filter((ing) => {
+      const isSelected = selectedIngredientIds.includes(ing.id);
+      if (ingredientFilterStatus === 'selected' && !isSelected) return false;
+      if (ingredientFilterStatus === 'unselected' && isSelected) return false;
+
+      if (ingredientSearchQuery.trim()) {
+        const q = ingredientSearchQuery.trim().toLowerCase();
+        return Boolean(ing.name && ing.name.toLowerCase().includes(q));
+      }
+      return true;
+    });
+  }, [allIngredients, selectedIngredientIds, ingredientFilterStatus, ingredientSearchQuery]);
+
   const toggleDeleteImageId = (imgId) => {
     setDeleteImageIds((prev) =>
       prev.includes(imgId) ? prev.filter((item) => item !== imgId) : [...prev, imgId]
@@ -264,7 +300,7 @@ export default function AdminDishFormPage({ mode = 'create' }) {
               </h1>
               <p className="text-xs text-sand-dim mt-1">
                 {isEdit
-                  ? `Cập nhật thông tin cho món #${code} (${name}).`
+                  ? `Cập nhật thông tin cho món ${name || ''}.`
                   : 'Khởi tạo món ăn và liên kết đầu bếp, nguyên liệu chế biến.'}
               </p>
             </div>
@@ -324,27 +360,7 @@ export default function AdminDishFormPage({ mode = 'create' }) {
               )}
 
               <form onSubmit={handleSubmit} noValidate className="card card-pad space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Mã món */}
-                  <div>
-                    <label className="field-label">
-                      Mã Món Ăn <span className="req">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="code"
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      placeholder="Ví dụ: DISH010"
-                      className="field field-mono"
-                    />
-                    {fieldErrors.code ? (
-                      <p className="mt-1.5 text-xs font-semibold text-brand">{fieldErrors.code}</p>
-                    ) : (
-                      <p className="field-hint">Mã duy nhất trong toàn bộ hệ thống thực đơn.</p>
-                    )}
-                  </div>
-
+                <div>
                   {/* Tên món */}
                   <div>
                     <label className="field-label">
@@ -552,49 +568,150 @@ export default function AdminDishFormPage({ mode = 'create' }) {
                   </div>
                 </div>
 
-                {/* Đầu bếp phụ trách (N-N) */}
+                {/* Đầu bếp phụ trách (N-N) - Có Typing Filter và Dropdown Filter theo yêu cầu Ảnh 3 */}
                 {allChefs.length > 0 && (
                   <div className="pt-4 border-t border-line space-y-3">
-                    <label className="field-label">Đầu Bếp Phụ Trách</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {allChefs.map((chef) => (
-                        <label key={chef.id} className="option-card">
-                          <input
-                            type="checkbox"
-                            checked={selectedChefIds.includes(chef.id)}
-                            onChange={() => toggleChefId(chef.id)}
-                            className="check"
-                          />
-                          <div>
-                            <span className="opt-title">{chef.name}</span>
-                            <span className="opt-sub">{chef.field}</span>
-                          </div>
-                        </label>
-                      ))}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <label className="field-label mb-0">Đầu Bếp Phụ Trách</label>
+                      <span className="text-xs text-sand-dim">
+                        Đã chọn {selectedChefIds.length} / {allChefs.length} đầu bếp
+                      </span>
                     </div>
+
+                    {/* Bộ lọc typing filter & status dropdown cho đầu bếp */}
+                    <div className="flex flex-col sm:flex-row gap-2.5">
+                      <div className="relative flex-grow min-w-0">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-sand-dim">
+                          <Icon name="search" cls="w-3.5 h-3.5" />
+                        </div>
+                        <input
+                          type="text"
+                          value={chefSearchQuery}
+                          onChange={(e) => setChefSearchQuery(e.target.value)}
+                          placeholder="Lọc theo tên đầu bếp, chuyên môn trong thời gian thực..."
+                          className="field text-xs w-full pl-9 pr-8 h-10"
+                        />
+                        {chefSearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setChefSearchQuery('')}
+                            className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-sand-dim hover:text-cream"
+                          >
+                            <Icon name="x" cls="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="w-full sm:w-44 flex-shrink-0">
+                        <select
+                          value={chefFilterStatus}
+                          onChange={(e) => setChefFilterStatus(e.target.value)}
+                          className="field text-xs w-full h-10"
+                        >
+                          <option value="all">Tất cả ({allChefs.length})</option>
+                          <option value="selected">Đã chọn ({selectedChefIds.length})</option>
+                          <option value="unselected">
+                            Chưa chọn ({allChefs.length - selectedChefIds.length})
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {filteredChefs.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {filteredChefs.map((chef) => (
+                          <label key={chef.id} className="option-card">
+                            <input
+                              type="checkbox"
+                              checked={selectedChefIds.includes(chef.id)}
+                              onChange={() => toggleChefId(chef.id)}
+                              className="check"
+                            />
+                            <div>
+                              <span className="opt-title">{chef.name}</span>
+                              <span className="opt-sub">{chef.field}</span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-xs text-sand-dim bg-[#fbf9f6] rounded-xl border border-dashed border-line">
+                        Không tìm thấy đầu bếp nào phù hợp với bộ lọc.
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Nguyên liệu sử dụng (N-N) - Bỏ hiển thị tồn kho theo yêu cầu */}
+                {/* Nguyên liệu sử dụng (N-N) - Có Typing Filter và Dropdown Filter theo yêu cầu Ảnh 3 */}
                 {allIngredients.length > 0 && (
                   <div className="pt-4 border-t border-line space-y-3">
-                    <label className="field-label">Nguyên Liệu Chế Biến</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {allIngredients.map((ing) => (
-                        <label key={ing.id} className="option-card">
-                          <input
-                            type="checkbox"
-                            checked={selectedIngredientIds.includes(ing.id)}
-                            onChange={() => toggleIngredientId(ing.id)}
-                            className="check"
-                          />
-                          <div>
-                            <span className="opt-title">{ing.name}</span>
-                            <span className="opt-sub font-mono">#{ing.code}</span>
-                          </div>
-                        </label>
-                      ))}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <label className="field-label mb-0">Nguyên Liệu Chế Biến</label>
+                      <span className="text-xs text-sand-dim">
+                        Đã chọn {selectedIngredientIds.length} / {allIngredients.length} nguyên liệu
+                      </span>
                     </div>
+
+                    {/* Bộ lọc typing filter & status dropdown cho nguyên liệu */}
+                    <div className="flex flex-col sm:flex-row gap-2.5">
+                      <div className="relative flex-grow min-w-0">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-sand-dim">
+                          <Icon name="search" cls="w-3.5 h-3.5" />
+                        </div>
+                        <input
+                          type="text"
+                          value={ingredientSearchQuery}
+                          onChange={(e) => setIngredientSearchQuery(e.target.value)}
+                          placeholder="Lọc theo tên nguyên liệu trong thời gian thực..."
+                          className="field text-xs w-full pl-9 pr-8 h-10"
+                        />
+                        {ingredientSearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setIngredientSearchQuery('')}
+                            className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-sand-dim hover:text-cream"
+                          >
+                            <Icon name="x" cls="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="w-full sm:w-44 flex-shrink-0">
+                        <select
+                          value={ingredientFilterStatus}
+                          onChange={(e) => setIngredientFilterStatus(e.target.value)}
+                          className="field text-xs w-full h-10"
+                        >
+                          <option value="all">Tất cả ({allIngredients.length})</option>
+                          <option value="selected">Đã chọn ({selectedIngredientIds.length})</option>
+                          <option value="unselected">
+                            Chưa chọn ({allIngredients.length - selectedIngredientIds.length})
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {filteredIngredients.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {filteredIngredients.map((ing) => (
+                          <label key={ing.id} className="option-card">
+                            <input
+                              type="checkbox"
+                              checked={selectedIngredientIds.includes(ing.id)}
+                              onChange={() => toggleIngredientId(ing.id)}
+                              className="check"
+                            />
+                            <div>
+                              <span className="opt-title">{ing.name}</span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-xs text-sand-dim bg-[#fbf9f6] rounded-xl border border-dashed border-line">
+                        Không tìm thấy nguyên liệu nào phù hợp với bộ lọc.
+                      </div>
+                    )}
                   </div>
                 )}
 

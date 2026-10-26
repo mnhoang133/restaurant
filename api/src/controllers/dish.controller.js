@@ -184,6 +184,14 @@ function validateSearchParams(query) {
     normalized.sortOrder = (normalized.sortBy === 'rank' || normalized.sortBy === 'similarity') ? 'desc' : 'asc';
   }
 
+  // 9. Tối ưu hiệu năng: total & skipCount (dành cho Infinite Scroll & Load More trang > 1)
+  if (query.total !== undefined && String(query.total).trim() !== '' && !isNaN(Number(query.total))) {
+    normalized.total = parseInt(String(query.total).trim(), 10);
+  }
+  if (query.skipCount === 'true' || query.skipCount === true) {
+    normalized.skipCount = true;
+  }
+
   return { isValid: Object.keys(errors).length === 0, errors, normalized };
 }
 

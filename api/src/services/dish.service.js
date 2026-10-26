@@ -32,18 +32,6 @@ class DishService {
         images: {
           orderBy: { orderIndex: 'asc' },
         },
-        chefs: {
-          where: { chef: { isDeleted: false } },
-          include: {
-            chef: true,
-          },
-        },
-        ingredients: {
-          where: { ingredient: { isDeleted: false } },
-          include: {
-            ingredient: true,
-          },
-        },
       },
       orderBy: { id: 'desc' },
     });
@@ -72,6 +60,8 @@ class DishService {
     ingredientId = null,
     sortBy = 'id',
     sortOrder = 'asc',
+    total: providedTotal = null,
+    skipCount = false,
   }) {
     const offset = (page - 1) * pageSize;
 
@@ -86,10 +76,15 @@ class DishService {
     const baseWhereClause = `
       WHERE d."isDeleted" = false
         AND (
-          -- 1. Mode basic hoặc advanced: tìm partial name với ILIKE
+          -- 1. Mode basic hoặc advanced: tích hợp tìm kiếm thông minh bao gồm ILIKE tên, Full-Text Search mô tả & Fuzzy pg_trgm
           (
             ($2::text = 'basic' OR $2::text = 'advanced')
-            AND ($1::text IS NULL OR d.name ILIKE $3 ESCAPE '!')
+            AND (
+              $1::text IS NULL 
+              OR d.name ILIKE $3 ESCAPE '!'
+              OR ($1::text IS NOT NULL AND to_tsvector('simple', d.name || ' ' || coalesce(d.description, '')) @@ plainto_tsquery('simple', $1))
+              OR ($1::text IS NOT NULL AND (similarity(d.name, $1) >= 0.3 OR word_similarity($1, d.name) >= 0.3))
+            )
           )
           -- 2. Mode fulltext: tìm PostgreSQL FTS trên name và description (ăn GIN index idx_dishes_fts_gin)
           OR (
@@ -118,20 +113,27 @@ class DishService {
         ))
     `;
 
-    // 1. Truy vấn COUNT(*) trực tiếp tại database để xác định total
-    const countSql = `SELECT COUNT(*)::int as total FROM dishes d ${baseWhereClause}`;
-    const countPromise = prisma.$queryRawUnsafe(
-      countSql,
-      q,
-      mode,
-      ilikePattern,
-      category,
-      minPrice,
-      maxPrice,
-      available,
-      chefId,
-      ingredientId
-    );
+    // 1. Truy vấn COUNT(*) trực tiếp tại database để xác định total (hoặc dùng total đã biết từ client để tối ưu infinite scroll)
+    let countPromise;
+    if (providedTotal !== null && providedTotal !== undefined && !isNaN(Number(providedTotal))) {
+      countPromise = Promise.resolve([{ total: Number(providedTotal) }]);
+    } else if (skipCount) {
+      countPromise = Promise.resolve([{ total: 0 }]);
+    } else {
+      const countSql = `SELECT COUNT(*)::int as total FROM dishes d ${baseWhereClause}`;
+      countPromise = prisma.$queryRawUnsafe(
+        countSql,
+        q,
+        mode,
+        ilikePattern,
+        category,
+        minPrice,
+        maxPrice,
+        available,
+        chefId,
+        ingredientId
+      );
+    }
 
     // 2. Xác định ORDER BY có tie-breaker cố định (d.id ASC)
     let orderByClause = '';
@@ -151,9 +153,22 @@ class DishService {
       orderByClause = `ORDER BY d.id ${upperOrder}`;
     }
 
-    // 3. Truy vấn danh sách ID theo LIMIT và OFFSET
+    // 3. Truy vấn danh sách món ăn đầy đủ kèm images trong 1 câu SQL duy nhất bằng json_agg
+    // Tối ưu hóa triệt để: loại bỏ over-fetching chefs & ingredients để tăng tốc tối đa
     const itemsSql = `
-      SELECT d.id
+      SELECT d.id, d.code, d.name, d.description, d.price, d.category, d."isAvailable", d."createdAt", d."updatedAt",
+             COALESCE(
+               (
+                 SELECT json_agg(json_build_object('id', di.id, 'imageUrl', di."imageUrl", 'orderIndex', di."orderIndex"))
+                 FROM (
+                   SELECT id, "imageUrl", "orderIndex"
+                   FROM dish_images
+                   WHERE "dishId" = d.id
+                   ORDER BY "orderIndex" ASC
+                 ) di
+               ),
+               '[]'::json
+             ) as images
       FROM dishes d
       ${baseWhereClause}
       ${orderByClause}
@@ -175,51 +190,13 @@ class DishService {
       offset
     );
 
-    // Thực hiện song song đếm và lấy ID tại PostgreSQL
-    const [countResult, idRows] = await Promise.all([countPromise, itemsPromise]);
+    // Thực hiện song song đếm và lấy món tại PostgreSQL
+    const [countResult, items] = await Promise.all([countPromise, itemsPromise]);
     const total = countResult && countResult[0] ? countResult[0].total : 0;
     const totalPages = total > 0 ? Math.ceil(total / pageSize) : 0;
-    const ids = idRows.map((r) => r.id);
-
-    // Nếu không có bản ghi nào hoặc page vượt quá totalPages -> trả về items: [] (theo Slide 10)
-    if (ids.length === 0) {
-      return {
-        items: [],
-        total,
-        page,
-        pageSize,
-        totalPages,
-      };
-    }
-
-    // 4. Lấy đầy đủ thông tin kèm quan hệ (images, chefs, ingredients) cho các ID trong trang
-    const dishes = await prisma.dish.findMany({
-      where: { id: { in: ids } },
-      include: {
-        images: {
-          orderBy: { orderIndex: 'asc' },
-        },
-        chefs: {
-          where: { chef: { isDeleted: false } },
-          include: {
-            chef: true,
-          },
-        },
-        ingredients: {
-          where: { ingredient: { isDeleted: false } },
-          include: {
-            ingredient: true,
-          },
-        },
-      },
-    });
-
-    // Giữ nguyên thứ tự ID đã sắp xếp bởi PostgreSQL
-    const dishMap = new Map(dishes.map((d) => [d.id, d]));
-    const items = ids.map((id) => dishMap.get(id)).filter(Boolean);
 
     return {
-      items,
+      items: items || [],
       total,
       page,
       pageSize,

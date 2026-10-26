@@ -110,8 +110,8 @@ export default function AdminIngredientFormPage({ mode = 'create' }) {
               </h1>
               <p className="text-xs text-sand-dim mt-1">
                 {isEdit
-                  ? `Cập nhật thông tin #${code} (${name}).`
-                  : 'Đăng ký tên và mã định danh nguyên vật liệu chế biến.'}
+                  ? `Cập nhật thông tin nguyên liệu ${name || ''}.`
+                  : 'Đăng ký tên và thông tin nguyên vật liệu chế biến.'}
               </p>
             </div>
 
@@ -158,24 +158,7 @@ export default function AdminIngredientFormPage({ mode = 'create' }) {
               )}
 
               <form onSubmit={handleSubmit} noValidate className="card card-pad space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="field-label">
-                      Mã Nguyên Liệu <span className="req">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="code"
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      placeholder="ING010 (Hoặc để trống tự sinh)"
-                      className="field field-mono"
-                    />
-                    {fieldErrors.code && (
-                      <p className="mt-1.5 text-xs font-semibold text-brand">{fieldErrors.code}</p>
-                    )}
-                  </div>
-
+                <div>
                   <div>
                     <label className="field-label">
                       Tên Nguyên Liệu <span className="req">*</span>

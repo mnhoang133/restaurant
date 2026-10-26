@@ -10,6 +10,7 @@ export default function AdminIngredientsListPage() {
   const qParam = searchParams.get('q') || '';
 
   const [searchInput, setSearchInput] = useState(qParam);
+  const [sortOrder, setSortOrder] = useState('asc');
   const [status, setStatus] = useState('loading'); // 'loading' | 'ok' | 'error'
   const [ingredients, setIngredients] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
@@ -82,10 +83,21 @@ export default function AdminIngredientsListPage() {
                   name="q"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Tìm theo tên hoặc mã nguyên liệu..."
+                  placeholder="Tìm theo tên nguyên liệu..."
                   className="field text-xs sm:text-sm"
                 />
               </div>
+
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="field text-xs sm:text-sm sm:w-44 flex-shrink-0"
+                aria-label="Sắp xếp"
+              >
+                <option value="asc">Tên: A → Z</option>
+                <option value="desc">Tên: Z → A</option>
+              </select>
+
               <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
                 <button
                   type="submit"
@@ -133,20 +145,23 @@ export default function AdminIngredientsListPage() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>Mã nguyên liệu</th>
+                      <th className="w-16">STT</th>
                       <th>Tên nguyên liệu</th>
                       <th className="text-right whitespace-nowrap">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ingredients.length > 0 ? (
-                      ingredients.map((ing) => (
-                        <tr key={ing.id}>
-                          <td className="font-mono font-bold text-xs text-sand-dim">
-                            #{ing.code}
-                          </td>
-
-                          <td className="font-bold text-cream">{ing.name}</td>
+                      [...ingredients]
+                        .sort((a, b) =>
+                          sortOrder === 'asc'
+                            ? a.name.localeCompare(b.name, 'vi')
+                            : b.name.localeCompare(a.name, 'vi')
+                        )
+                        .map((ing, idx) => (
+                          <tr key={ing.id}>
+                            <td className="font-mono text-xs text-sand-dim">{idx + 1}</td>
+                            <td className="font-bold text-cream">{ing.name}</td>
 
                           <td className="text-right whitespace-nowrap">
                             <div className="inline-flex items-center gap-1.5 flex-nowrap">

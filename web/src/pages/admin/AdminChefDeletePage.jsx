@@ -123,10 +123,6 @@ export default function AdminChefDeletePage() {
 
               <div className="p-4 rounded-2xl bg-ink-950/60 border border-line text-left space-y-2 text-xs">
                 <div className="flex justify-between items-center">
-                  <span className="text-sand-dim font-semibold uppercase">Mã:</span>
-                  <span className="font-mono font-bold text-cream">#{chef.code}</span>
-                </div>
-                <div className="flex justify-between items-center">
                   <span className="text-sand-dim font-semibold uppercase">Họ & Tên:</span>
                   <span className="font-bold text-cream">{chef.name}</span>
                 </div>

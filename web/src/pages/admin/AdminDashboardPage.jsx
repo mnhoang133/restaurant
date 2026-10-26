@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiClient, resolveImageUrl } from '../../api/client';
+import { apiClient, resolveImageUrl, getDishImageUrl, getCategoryImageUrl } from '../../api/client';
 import AdminNav from '../../components/AdminNav';
 import Icon from '../../components/Icon';
 import { ErrorView, LoadingView } from '../../components/StateViews';
@@ -174,35 +174,24 @@ export default function AdminDashboardPage() {
                       <tbody>
                         {recentDishes.length > 0 ? (
                           recentDishes.map((d) => {
-                            const img =
-                              d.images && d.images.length > 0
-                                ? resolveImageUrl(d.images[0].imageUrl)
-                                : null;
+                            const img = getDishImageUrl(d);
                             return (
                               <tr key={d.id}>
                                 <td>
                                   <div className="flex items-center gap-3">
-                                    {img ? (
-                                      <img
-                                        src={img}
-                                        alt={d.name}
-                                        className="thumb"
-                                        loading="lazy"
-                                      />
-                                    ) : (
-                                      <div className="thumb grid place-items-center bg-[#f4eee6] text-sand/60">
-                                        <Icon
-                                          name="drumstick"
-                                          cls="w-5 h-5 text-brand/50"
-                                        />
-                                      </div>
-                                    )}
+                                    <img
+                                      src={img}
+                                      alt={d.name}
+                                      className="thumb object-cover"
+                                      loading="lazy"
+                                      onError={(e) => {
+                                        e.currentTarget.onerror = null;
+                                        e.currentTarget.src = getCategoryImageUrl(d.category);
+                                      }}
+                                    />
                                     <div>
                                       <div className="font-bold text-cream line-clamp-1">
                                         {d.name}
-                                      </div>
-                                      <div className="font-mono text-xs text-sand-dim">
-                                        #{d.code}
                                       </div>
                                     </div>
                                   </div>
@@ -210,8 +199,8 @@ export default function AdminDashboardPage() {
                                 <td>
                                   <span className="badge text-xs">{d.category}</span>
                                 </td>
-                                <td className="font-mono font-bold text-ember text-xs">
-                                  {Number(d.price).toLocaleString('vi-VN')} đ
+                                <td className="font-mono font-bold text-ember text-xs whitespace-nowrap">
+                                  {Number(d.price).toLocaleString('vi-VN')}&nbsp;đ
                                 </td>
                                 <td className="text-right">
                                   <div className="inline-flex items-center gap-1">
@@ -279,9 +268,6 @@ export default function AdminDashboardPage() {
                               <Icon name="box" cls="w-4 h-4 text-ember" />
                               <span className="font-semibold text-cream">{ing.name}</span>
                             </div>
-                            <span className="font-mono text-[11px] text-sand-dim">
-                              #{ing.code}
-                            </span>
                           </div>
                         ))}
                       </div>
