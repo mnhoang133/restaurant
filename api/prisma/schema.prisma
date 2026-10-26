@@ -1,0 +1,112 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. Món ăn
+model Dish {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  description String?
+  price       Int      // Giá món tính theo VND (số nguyên)
+  category    String   // Khai vị, Món chính, Tráng miệng, Nước uống
+  isAvailable Boolean  @default(true)
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  images      DishImage[]
+  chefs       DishChef[]
+  ingredients DishIngredient[]
+
+  @@map("dishes")
+}
+
+// Hình ảnh món ăn (1 món có nhiều ảnh: URL dạng <CODE>-<STT>.<ext>)
+model DishImage {
+  id         Int      @id @default(autoincrement())
+  dishId     Int
+  imageUrl   String
+  orderIndex Int      @default(1) // Thứ tự hiển thị: 1, 2, 3...
+  createdAt  DateTime @default(now())
+
+  dish       Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  @@map("dish_images")
+}
+
+// 2. Đầu bếp
+model Chef {
+  id         Int      @id @default(autoincrement())
+  code       String   @unique
+  name       String
+  field      String   // Lĩnh vực chuyên môn (Món Á, Món Âu, Bếp nướng...)
+  experience Int      // Số năm kinh nghiệm (số nguyên)
+  isDeleted  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  images     ChefImage[]
+  dishes     DishChef[]
+
+  @@map("chefs")
+}
+
+// Hình ảnh đầu bếp
+model ChefImage {
+  id         Int      @id @default(autoincrement())
+  chefId     Int
+  imageUrl   String
+  orderIndex Int      @default(1)
+  createdAt  DateTime @default(now())
+
+  chef       Chef     @relation(fields: [chefId], references: [id], onDelete: Cascade)
+
+  @@map("chef_images")
+}
+
+// 3. Nguyên liệu
+model Ingredient {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  name      String
+  quantity  Int      // Số lượng tồn kho (số nguyên)
+  unit      String   // Đơn vị tính: kg, g, lít, quả, bó...
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dishes    DishIngredient[]
+
+  @@map("ingredients")
+}
+
+// Bảng liên kết N - N: Món ăn - Đầu bếp
+model DishChef {
+  dishId Int
+  chefId Int
+
+  dish Dish @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  chef Chef @relation(fields: [chefId], references: [id], onDelete: Cascade)
+
+  @@id([dishId, chefId])
+  @@map("dish_chefs")
+}
+
+// Bảng liên kết N - N: Món ăn - Nguyên liệu
+model DishIngredient {
+  dishId       Int
+  ingredientId Int
+  quantityUsed Int? // Định lượng nguyên liệu cho món (tùy chọn)
+
+  dish       Dish       @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@id([dishId, ingredientId])
+  @@map("dish_ingredients")
+}

@@ -1,0 +1,19 @@
+meta {
+  name: 16 - Technical 404 Error (Unknown API Endpoint)
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/endpoint-khong-ton-tai
+  body: none
+  auth: none
+}
+
+tests {
+  test("Unknown API URL returns HTTP 404 without ok field", function() {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(404);
+    expect(body.ok).to.equal(undefined);
+  });
+}

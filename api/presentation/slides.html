@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Báo Cáo Kiến Trúc - Nhà Hàng Việt Nam</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .slide {
+      display: none;
+    }
+
+    .slide.active {
+      display: flex;
+    }
+  </style>
+</head>
+
+<body
+  class="bg-slate-100 text-slate-900 h-full overflow-hidden flex flex-col justify-between p-4 md:p-6 font-sans selection:bg-amber-400 selection:text-black select-none">
+
+  <!-- Header Info (Co dinh chieu cao) -->
+  <header
+    class="max-w-6xl mx-auto w-full flex justify-between items-center text-sm md:text-base font-bold text-slate-500 pb-2 border-b border-slate-300 h-10 flex-shrink-0">
+    <span class="text-amber-800 font-extrabold uppercase tracking-wider text-base">Nhà Hàng Việt Nam</span>
+    <span>Phát Triển Ứng Dụng Web • SSR, Database & ORM</span>
+  </header>
+
+  <!-- Slide Display Container (Khung co dinh chieu cao tuyet doi, chong rung giat) -->
+  <main class="flex-grow flex items-center justify-center max-w-6xl mx-auto w-full my-auto overflow-hidden">
+
+    <!-- SLIDE 1: Title -->
+    <section
+      class="slide active flex-col justify-between w-full h-[580px] md:h-[620px] bg-white p-8 md:p-14 rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex-shrink-0">
+      <div class="space-y-6 my-auto">
+        <span
+          class="inline-block px-4 py-1.5 rounded-full bg-amber-50 text-amber-900 text-sm font-extrabold uppercase tracking-wider border border-amber-200">
+          Báo Cáo Kiến Trúc Hệ Thống
+        </span>
+        <h1 class="text-4xl md:text-6xl font-black text-slate-950 tracking-tight leading-tight">
+          Nhà Hàng Việt Nam
+        </h1>
+        <p class="text-slate-700 text-xl md:text-2xl font-medium max-w-3xl leading-relaxed">
+          Ứng dụng web ẩm thực xây dựng theo kiến trúc Server-Side Rendering (SSR) Monolith, Prisma ORM và cơ sở dữ liệu
+          PostgreSQL Supabase.
+        </p>
+      </div>
+
+      <div
+        class="pt-6 border-t border-slate-200 flex justify-between items-center text-base text-slate-600 font-medium flex-shrink-0">
+        <div>
+          <p class="text-slate-950 font-black text-lg">Mô hình kiến trúc</p>
+          <p class="text-slate-700 font-semibold">SSR • Monolith • Post/Redirect/Get</p>
+        </div>
+        <div class="text-right">
+          <p class="text-slate-950 font-black text-lg">Cơ sở dữ liệu</p>
+          <p class="text-slate-700 font-semibold">Supabase Cloud PostgreSQL</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: Database & Cloud -->
+    <section
+      class="slide flex-col justify-between w-full h-[580px] md:h-[620px] bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex-shrink-0">
+      <div class="space-y-4">
+        <div class="flex justify-between items-center text-sm font-bold flex-shrink-0">
+          <span class="text-amber-800 uppercase tracking-widest text-base font-black">Phần 1</span>
+          <span class="font-mono text-slate-400 text-base">Slide 2 / 6</span>
+        </div>
+        <h2 class="text-3xl md:text-4xl font-black text-slate-950 flex-shrink-0">Cơ Chế Database & Thành Phần Cloud</h2>
+
+        <div class="space-y-4 text-base md:text-lg text-slate-800 leading-relaxed pt-1">
+          <div class="p-4 md:p-5 rounded-2xl bg-slate-50 border border-slate-200">
+            <h3 class="font-black text-slate-950 text-lg md:text-xl mb-1">Cơ sở dữ liệu đám mây (Cloud Database)</h3>
+            <p class="text-slate-700 text-base">PostgreSQL lưu trữ trực tiếp trên nền tảng Supabase, giao tiếp thông qua
+              Prisma ORM.</p>
+          </div>
+
+          <div class="p-4 md:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <h3 class="font-black text-slate-950 text-lg md:text-xl">Cơ chế 2 chuỗi kết nối (Connection Pooling)</h3>
+            <ul class="space-y-1.5 list-disc list-inside text-slate-700 text-sm md:text-base">
+              <li><strong class="text-slate-950 font-bold">Cổng 6543 (DATABASE_URL)</strong>: Đi qua PgBouncer (Pooler)
+                gom kết nối khi web hoạt động, chống nghẽn RAM.</li>
+              <li><strong class="text-slate-950 font-bold">Cổng 5432 (DIRECT_URL)</strong>: Kết nối trực tiếp vào
+                Postgres, dùng riêng khi chạy lệnh <code
+                  class="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold text-sm">prisma db push</code>
+                tạo bảng.</li>
+            </ul>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-sm md:text-base">
+              <strong class="text-slate-950 block mb-1 font-black text-base md:text-lg">Singleton Pattern:</strong>
+              <p class="text-slate-700">Khởi tạo duy nhất 1 phiên bản PrismaClient, tránh rò rỉ kết nối khi nodemon tự
+                reload.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-sm md:text-base">
+              <strong class="text-slate-950 block mb-1 font-black text-base md:text-lg">Cloud Storage (Lưu
+                ảnh):</strong>
+              <p class="text-slate-700">Tải ảnh lên Supabase Storage bucket, lưu URL vào DB; có cơ chế fallback cục bộ
+                nếu gặp sự cố mạng.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="text-xs md:text-sm text-slate-400 border-t border-slate-100 pt-2 flex-shrink-0">Hạ tầng đám mây phân
+        tán đảm bảo tính toàn vẹn và khả năng chịu tải.</div>
+    </section>
+
+    <!-- SLIDE 3: Tech Stack -->
+    <section
+      class="slide flex-col justify-between w-full h-[580px] md:h-[620px] bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex-shrink-0">
+      <div class="space-y-4">
+        <div class="flex justify-between items-center text-sm font-bold flex-shrink-0">
+          <span class="text-amber-800 uppercase tracking-widest text-base font-black">Phần 2</span>
+          <span class="font-mono text-slate-400 text-base">Slide 3 / 6</span>
+        </div>
+        <h2 class="text-3xl md:text-4xl font-black text-slate-950 flex-shrink-0">Toàn Bộ Tech Stack Dự Án</h2>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 pt-1">
+          <div class="p-3.5 md:p-4 rounded-2xl bg-slate-50 border border-slate-200">
+            <span class="text-xs text-slate-500 font-extrabold uppercase block">Môi trường</span>
+            <strong class="text-slate-950 text-lg md:text-xl font-black">Node.js (v18+)</strong>
+          </div>
+          <div class="p-3.5 md:p-4 rounded-2xl bg-slate-50 border border-slate-200">
+            <span class="text-xs text-slate-500 font-extrabold uppercase block">Backend Framework</span>
+            <strong class="text-slate-950 text-lg md:text-xl font-black">Express.js (v4.21)</strong>
+          </div>
+          <div class="p-3.5 md:p-4 rounded-2xl bg-slate-50 border border-slate-200">
+            <span class="text-xs text-slate-500 font-extrabold uppercase block">Template Engine</span>
+            <strong class="text-slate-950 text-lg md:text-xl font-black">EJS (v3.1)</strong>
+          </div>
+          <div class="p-3.5 md:p-4 rounded-2xl bg-slate-50 border border-slate-200">
+            <span class="text-xs text-slate-500 font-extrabold uppercase block">Giao diện (Styling)</span>
+            <strong class="text-slate-950 text-lg md:text-xl font-black">Tailwind CSS</strong>
+          </div>
+          <div class="p-3.5 md:p-4 rounded-2xl bg-slate-50 border border-slate-200">
+            <span class="text-xs text-slate-500 font-extrabold uppercase block">ORM (Code-First)</span>
+            <strong class="text-slate-950 text-lg md:text-xl font-black">Prisma ORM (v5.22)</strong>
+          </div>
+          <div class="p-3.5 md:p-4 rounded-2xl bg-slate-50 border border-slate-200">
+            <span class="text-xs text-slate-500 font-extrabold uppercase block">Cơ sở dữ liệu</span>
+            <strong class="text-slate-950 text-lg md:text-xl font-black">PostgreSQL Supabase</strong>
+          </div>
+          <div class="p-3.5 md:p-4 rounded-2xl bg-slate-50 border border-slate-200">
+            <span class="text-xs text-slate-500 font-extrabold uppercase block">Upload Middleware</span>
+            <strong class="text-slate-950 text-lg md:text-xl font-black">Multer (v1.4)</strong>
+          </div>
+          <div class="p-3.5 md:p-4 rounded-2xl bg-slate-50 border border-slate-200">
+            <span class="text-xs text-slate-500 font-extrabold uppercase block">Method Override</span>
+            <strong class="text-slate-950 text-lg md:text-xl font-black">method-override</strong>
+          </div>
+          <div class="p-3.5 md:p-4 rounded-2xl bg-slate-50 border border-slate-200">
+            <span class="text-xs text-slate-500 font-extrabold uppercase block">Dev & DB Tools</span>
+            <strong class="text-slate-950 text-lg md:text-xl font-black">nodemon, Studio</strong>
+          </div>
+        </div>
+      </div>
+      <p class="text-sm font-semibold text-slate-500 pt-3 border-t border-slate-200 flex-shrink-0">Cấu hình độc lập:
+        dotenv quản lý biến môi trường, bảo mật chuỗi kết nối.</p>
+    </section>
+
+    <!-- SLIDE 4: Architecture & SSR Mechanism -->
+    <section
+      class="slide flex-col justify-between w-full h-[580px] md:h-[620px] bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex-shrink-0">
+      <div class="space-y-4">
+        <div class="flex justify-between items-center text-sm font-bold flex-shrink-0">
+          <span class="text-amber-800 uppercase tracking-widest text-base font-black">Phần 3</span>
+          <span class="font-mono text-slate-400 text-base">Slide 4 / 6</span>
+        </div>
+        <h2 class="text-3xl md:text-4xl font-black text-slate-950 flex-shrink-0">Cấu Trúc Mã Nguồn & Cơ Chế SSR</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+          <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <h3 class="font-black text-slate-950 text-lg md:text-xl">Cấu trúc phân tầng (Layered)</h3>
+            <ul class="text-sm md:text-base text-slate-700 space-y-1.5 list-disc list-inside">
+              <li><code
+                  class="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold text-xs">prisma/</code>:
+                Schema 3 model & seed data.</li>
+              <li><code
+                  class="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold text-xs">src/middlewares/</code>:
+                id-parser, upload ảnh, error (404/500).</li>
+              <li><code
+                  class="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold text-xs">src/routes/</code>:
+                Tách Client (/dishes) và Admin (/admin/...).</li>
+              <li><code
+                  class="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold text-xs">src/controllers/</code>:
+                Nhận request, validate, điều phối PRG.</li>
+              <li><code
+                  class="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold text-xs">src/services/</code>:
+                Nơi duy nhất gọi Prisma truy vấn DB.</li>
+              <li><code
+                  class="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold text-xs">src/views/</code>:
+                18 template EJS render giao diện.</li>
+            </ul>
+          </div>
+
+          <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 flex flex-col justify-center">
+            <h3 class="font-black text-slate-950 text-lg md:text-xl">Cơ chế SSR (Server-Side Rendering)</h3>
+            <p class="text-slate-800 text-base md:text-lg leading-relaxed">
+              <strong>Server làm tất cả:</strong> Nhận request -> Controller lấy dữ liệu từ DB -> nạp vào template EJS
+              -> nặn ra file HTML hoàn chỉnh gửi về.
+            </p>
+            <p class="text-slate-800 text-base md:text-lg leading-relaxed">
+              Trình duyệt chỉ hiển thị HTML nhận được. <strong>Tuyệt đối không dùng fetch hay AJAX phía client</strong>
+              để xin dữ liệu ngầm.
+            </p>
+          </div>
+        </div>
+      </div>
+      <p class="text-sm font-semibold text-slate-500 pt-3 border-t border-slate-200 flex-shrink-0">Mỗi thao tác chuyển
+        trang hoặc gửi form, trình duyệt sẽ tải lại (reload) toàn bộ trang.</p>
+    </section>
+
+    <!-- SLIDE 5: Flow & PRG Pattern -->
+    <section
+      class="slide flex-col justify-between w-full h-[580px] md:h-[620px] bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex-shrink-0">
+      <div class="space-y-4">
+        <div class="flex justify-between items-center text-sm font-bold flex-shrink-0">
+          <span class="text-amber-800 uppercase tracking-widest text-base font-black">Phần 4</span>
+          <span class="font-mono text-slate-400 text-base">Slide 5 / 6</span>
+        </div>
+        <h2 class="text-3xl md:text-4xl font-black text-slate-950 flex-shrink-0">Luồng Xử Lý (Flow) & Kiến Trúc PRG</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+          <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+            <h3 class="font-black text-slate-950 text-lg md:text-xl">Luồng Đọc (GET)</h3>
+            <ul class="text-sm md:text-base text-slate-700 space-y-2 list-disc list-inside">
+              <li>Browser gửi request <code
+                  class="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold text-xs">GET /dishes?q=...</code>
+              </li>
+              <li>Controller gọi Service -> Prisma truy vấn Postgres.</li>
+              <li>Render file EJS trả về HTML (mã HTTP 200).</li>
+              <li>Nếu ID sai định dạng hoặc không có trong DB: trả mã <strong>HTTP 404</strong> kèm trang báo lỗi và
+                link quay về.</li>
+            </ul>
+          </div>
+
+          <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+            <h3 class="font-black text-slate-950 text-lg md:text-xl">Luồng Ghi (POST, PATCH, DELETE) - PRG</h3>
+            <ul class="text-sm md:text-base text-slate-700 space-y-2 list-disc list-inside">
+              <li><strong>Validation</strong>: Dữ liệu nhập sai -> Server trả <strong>HTTP 400</strong> và giữ nguyên dữ
+                liệu trên form.</li>
+              <li><strong>Chống trùng (Post/Redirect/Get)</strong>: Lưu DB xong -> Server trả <strong>HTTP 303
+                  Redirect</strong> sang trang chi tiết -> Browser tự mở bằng GET. Bấm F5 không bị gửi lại POST.</li>
+              <li><strong>Xóa (DELETE)</strong>: Bắt buộc qua trang xác nhận trước khi gửi <code
+                  class="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold text-xs">?_method=DELETE</code>
+                (thực hiện Xóa Mềm Soft Delete: isDeleted = true).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <p class="text-sm font-semibold text-slate-500 pt-3 border-t border-slate-200 flex-shrink-0">Mô hình chuẩn mực: dữ
+        liệu an toàn, không gửi trùng lặp và phân định rõ ràng các phương thức HTTP.</p>
+    </section>
+
+    <!-- SLIDE 6: UI/UX Design Decisions -->
+    <section
+      class="slide flex-col justify-between w-full h-[580px] md:h-[620px] bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex-shrink-0">
+      <div class="space-y-4">
+        <div class="flex justify-between items-center text-sm font-bold flex-shrink-0">
+          <span class="text-amber-800 uppercase tracking-widest text-base font-black">Phần 5</span>
+          <span class="font-mono text-slate-400 text-base">Slide 6 / 6</span>
+        </div>
+        <h2 class="text-3xl md:text-4xl font-black text-slate-950 flex-shrink-0">Quyết Định Thiết Kế: Bố Cục, Màu Sắc &
+          Hiệu Ứng</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+          <!-- Bố cục -->
+          <div class="p-4 md:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <h3 class="font-black text-slate-950 text-base md:text-lg">Bố Cục</h3>
+            <ul class="space-y-2 text-xs md:text-sm text-slate-700 list-disc list-inside">
+              <li><strong>3 phân hệ:</strong> Trang chủ, Thực đơn và Quản trị.</li>
+              <li><strong>Menu thẻ lưới:</strong> Khung bo góc, phân trang phía server.</li>
+              <li><strong>Quản trị:</strong> Sidebar riêng biệt, bảng dữ liệu và form trực quan.</li>
+            </ul>
+          </div>
+
+          <!-- Màu sắc -->
+          <div class="p-4 md:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <h3 class="font-black text-slate-950 text-base md:text-lg">Màu Sắc</h3>
+            <ul class="space-y-2 text-xs md:text-sm text-slate-700 list-disc list-inside">
+              <li><strong>Theme Trắng:</strong> Nền sáng sạch sẽ, tối giản cho ẩm thực hiện đại.</li>
+              <li><strong>Đỏ chủ đạo:</strong> Nhận diện thức ăn nhanh, kích thích vị giác.</li>
+              <li><strong>Gam ấm phối hợp:</strong> Nền kem sáng, viền mờ tinh tế chống chói mắt.</li>
+            </ul>
+          </div>
+
+          <!-- Hiệu ứng -->
+          <div class="p-4 md:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <h3 class="font-black text-slate-950 text-base md:text-lg">Hiệu Ứng</h3>
+            <ul class="space-y-2 text-xs md:text-sm text-slate-700 list-disc list-inside">
+              <li><strong>Hiệu ứng xoay đĩa gà ở trang chủ.</strong></li>
+              <li><strong>Slide toàn trang:</strong> Trượt từ trái sang phải sau khi tải trang.</li>
+              <li><strong>Phản hồi tương tác:</strong> Thẻ hover nổi nhẹ, nút bấm đàn hồi khi nhấn.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="text-xs md:text-sm text-slate-400 border-t border-slate-100 pt-2 flex-shrink-0">Giao diện tối giản,
+        tập trung làm nổi bật sản phẩm và mang lại trải nghiệm xem menu liền mạch.</div>
+    </section>
+
+  </main>
+
+  <!-- Navigation Controls (Co dinh duoi day trang) -->
+  <footer
+    class="max-w-6xl mx-auto w-full flex justify-between items-center text-sm md:text-base font-bold text-slate-600 pt-2 border-t border-slate-300 h-14 flex-shrink-0">
+    <span>Dùng phím mũi tên [←] [→] hoặc bấm nút:</span>
+    <div class="flex items-center gap-3">
+      <button id="prevBtn"
+        class="px-4 py-2 bg-white hover:bg-slate-200 text-slate-950 rounded-xl transition-colors border border-slate-300 shadow-sm font-extrabold text-sm md:text-base">←
+        Trang trước</button>
+      <span id="pageIndicator" class="font-mono font-black text-amber-800 text-base md:text-lg">1 / 6</span>
+      <button id="nextBtn"
+        class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-extrabold rounded-xl transition-colors shadow-sm text-sm md:text-base">Trang
+        sau →</button>
+    </div>
+  </footer>
+
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const indicator = document.getElementById('pageIndicator');
+    let currentIndex = 0;
+
+    function showSlide(index) {
+      if (index < 0) index = 0;
+      if (index >= slides.length) index = slides.length - 1;
+      slides.forEach((s, idx) => s.classList.toggle('active', idx === index));
+      currentIndex = index;
+      indicator.textContent = (currentIndex + 1) + ' / ' + slides.length;
+    }
+
+    prevBtn.addEventListener('click', () => showSlide(currentIndex - 1));
+    nextBtn.addEventListener('click', () => showSlide(currentIndex + 1));
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'Space') showSlide(currentIndex + 1);
+      if (e.key === 'ArrowLeft') showSlide(currentIndex - 1);
+    });
+  </script>
+
+</body>
+
+</html>

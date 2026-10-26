@@ -1,0 +1,28 @@
+meta {
+  name: 20 - Advanced Search Multi Criteria (AND)
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{baseUrl}}/api/dishes?mode=advanced&category=Gà Rán&minPrice=30000&maxPrice=120000&available=true&page=1&pageSize=10
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Advanced search filters matched criteria", function() {
+    const body = res.getBody();
+    expect(body.ok).to.equal(true);
+    expect(body.data.total).to.be.above(0);
+    body.data.items.forEach(function(item) {
+      expect(item.category).to.equal('Gà Rán');
+      expect(item.price).to.be.within(30000, 120000);
+      expect(item.isAvailable).to.equal(true);
+    });
+  });
+}

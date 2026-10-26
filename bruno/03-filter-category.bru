@@ -1,0 +1,27 @@
+meta {
+  name: 03 - Client Filter Dishes by Category Dropdown
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/dishes?category=Burger
+  body: none
+  auth: none
+}
+
+tests {
+  test("Filter dishes by category returns HTTP 200 and ok: true", function() {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.ok).to.equal(true);
+    expect(Array.isArray(body.data)).to.equal(true);
+  });
+
+  test("All returned dishes belong to category Burger", function() {
+    const body = res.getBody();
+    body.data.forEach((dish) => {
+      expect(dish.category.toLowerCase()).to.equal("burger");
+    });
+  });
+}

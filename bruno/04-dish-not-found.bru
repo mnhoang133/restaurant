@@ -1,0 +1,20 @@
+meta {
+  name: 04 - Client GET Non-Existent Dish (Business Error NOT_FOUND)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/dishes/999999
+  body: none
+  auth: none
+}
+
+tests {
+  test("Returns HTTP 200 with ok: false and error.code NOT_FOUND", function() {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.ok).to.equal(false);
+    expect(body.error.code).to.equal("NOT_FOUND");
+  });
+}

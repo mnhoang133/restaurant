@@ -1,0 +1,20 @@
+meta {
+  name: 05 - Client GET Dish with Non-Integer ID
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/dishes/invalid-id-string
+  body: none
+  auth: none
+}
+
+tests {
+  test("Non-integer ID is rejected by id-parser with ok: false and NOT_FOUND", function() {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.ok).to.equal(false);
+    expect(body.error.code).to.equal("NOT_FOUND");
+  });
+}

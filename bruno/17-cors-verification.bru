@@ -1,0 +1,22 @@
+meta {
+  name: 17 - CORS Origin Header Verification
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/api/dishes
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: {{spaOrigin}}
+}
+
+tests {
+  test("Access-Control-Allow-Origin matches SPA origin and is not wildcard *", function() {
+    const originHeader = res.getHeader("access-control-allow-origin");
+    expect(originHeader).to.equal("http://localhost:5173");
+  });
+}

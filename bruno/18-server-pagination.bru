@@ -1,0 +1,28 @@
+meta {
+  name: 18 - Server Pagination (Envelope items, total, page, pageSize)
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/api/dishes?page=1&pageSize=10
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response envelope contains pagination fields", function() {
+    const body = res.getBody();
+    expect(body.ok).to.equal(true);
+    expect(Array.isArray(body.data.items)).to.equal(true);
+    expect(body.data.items.length).to.equal(10);
+    expect(body.data.page).to.equal(1);
+    expect(body.data.pageSize).to.equal(10);
+    expect(body.data.total).to.be.at.least(1000);
+    expect(body.data.totalPages).to.be.at.least(100);
+  });
+}

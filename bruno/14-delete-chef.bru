@@ -1,0 +1,19 @@
+meta {
+  name: 14 - Admin Cleanup Delete Chef
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{baseUrl}}/api/chefs/{{createdChefId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("Soft delete chef returns ok: true", function() {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.ok).to.equal(true);
+  });
+}

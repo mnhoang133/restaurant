@@ -1,0 +1,37 @@
+meta {
+  name: 09 - Admin POST Chef & Assign Dish List
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/chefs
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "code": "CHEF_BRUNO_{{testRunId}}",
+    "name": "Bếp Trưởng Bruno",
+    "field": "Chuyên Gia Gà Rán",
+    "experience": 10
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (body && body.data && body.data.id) {
+    bru.setVar("createdChefId", body.data.id);
+    bru.setVar("createdChefCode", body.data.code);
+  }
+}
+
+tests {
+  test("Create chef succeeds with ok: true", function() {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.ok).to.equal(true);
+    expect(body.data.name).to.equal("Bếp Trưởng Bruno");
+  });
+}

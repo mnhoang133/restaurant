@@ -1,0 +1,24 @@
+meta {
+  name: 21 - Pagination Validation Error (VALIDATION_FAILED)
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/api/dishes?mode=advanced&minPrice=200000&maxPrice=50000
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP status is 200 for business error (VALIDATION_FAILED)", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response has ok: false and code VALIDATION_FAILED", function() {
+    const body = res.getBody();
+    expect(body.ok).to.equal(false);
+    expect(body.error.code).to.equal('VALIDATION_FAILED');
+    expect(body.error.fields.minPrice).to.be.a('string');
+  });
+}

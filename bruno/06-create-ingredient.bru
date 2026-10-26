@@ -1,0 +1,40 @@
+meta {
+  name: 06 - Admin POST Ingredient (Name & Code Only, No Stock Quantity Required)
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/ingredients
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "code": "ING_BRUNO_{{testRunId}}",
+    "name": "Bột Chiên Giòn Bruno Test"
+  }
+}
+
+script:pre-request {
+  const runId = Date.now().toString().slice(-5);
+  bru.setVar("testRunId", runId);
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (body && body.data && body.data.id) {
+    bru.setVar("createdIngredientId", body.data.id);
+    bru.setVar("createdIngredientCode", body.data.code);
+  }
+}
+
+tests {
+  test("Create ingredient with only name & code succeeds (ok: true)", function() {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.ok).to.equal(true);
+    expect(body.data.name).to.equal("Bột Chiên Giòn Bruno Test");
+  });
+}

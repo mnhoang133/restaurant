@@ -1,0 +1,23 @@
+meta {
+  name: 01 - Client GET Dishes List
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/dishes
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response has ok: true and data is an array", function() {
+    const body = res.getBody();
+    expect(body.ok).to.equal(true);
+    expect(Array.isArray(body.data)).to.equal(true);
+  });
+}

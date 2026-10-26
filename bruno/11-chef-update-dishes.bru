@@ -1,0 +1,27 @@
+meta {
+  name: 11 - Admin PATCH Chef Dish List (Move Dish Between Cooked & Uncooked Lists)
+  type: http
+  seq: 11
+}
+
+patch {
+  url: {{baseUrl}}/api/chefs/{{createdChefId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "dishIds": []
+  }
+}
+
+tests {
+  test("Removing dish from chef's cooked list updates chef.dishes to empty array", function() {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.ok).to.equal(true);
+    expect(Array.isArray(body.data.dishes)).to.equal(true);
+    expect(body.data.dishes.length).to.equal(0);
+  });
+}

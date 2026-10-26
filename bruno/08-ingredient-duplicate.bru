@@ -1,0 +1,27 @@
+meta {
+  name: 08 - Admin POST Ingredient Duplicate Code
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/ingredients
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "code": "{{createdIngredientCode}}",
+    "name": "Nguyên Liệu Trùng Mã"
+  }
+}
+
+tests {
+  test("Duplicate ingredient code returns ok: false and DUPLICATE_CODE", function() {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.ok).to.equal(false);
+    expect(body.error.code).to.equal("DUPLICATE_CODE");
+  });
+}

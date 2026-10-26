@@ -1,0 +1,20 @@
+meta {
+  name: 12 - Admin Soft Delete Dish, Chef & Ingredient
+  type: http
+  seq: 12
+}
+
+delete {
+  url: {{baseUrl}}/api/dishes/{{createdDishId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("Soft delete dish returns ok: true and data: null", function() {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.ok).to.equal(true);
+    expect(body.data).to.equal(null);
+  });
+}

@@ -1,0 +1,24 @@
+meta {
+  name: 19 - Basic Search with PostgreSQL Full-Text Search
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{baseUrl}}/api/dishes?mode=basic&q=gà&page=1&pageSize=10
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP status is 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Basic search returns matched items and total > 0", function() {
+    const body = res.getBody();
+    expect(body.ok).to.equal(true);
+    expect(body.data.total).to.be.above(0);
+    expect(body.data.items.length).to.be.above(0);
+  });
+}

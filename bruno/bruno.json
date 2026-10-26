@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "CRISPY HOUSE - Restaurant REST API (Bruno Automated Tests)",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

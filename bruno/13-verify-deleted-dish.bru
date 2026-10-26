@@ -1,0 +1,20 @@
+meta {
+  name: 13 - Admin GET Deleted Dish Returns NOT_FOUND
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/dishes/{{createdDishId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("Deleted dish cannot be retrieved (ok: false, error.code: NOT_FOUND)", function() {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.ok).to.equal(false);
+    expect(body.error.code).to.equal("NOT_FOUND");
+  });
+}

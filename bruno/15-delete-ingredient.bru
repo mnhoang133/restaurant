@@ -1,0 +1,19 @@
+meta {
+  name: 15 - Admin Cleanup Delete Ingredient
+  type: http
+  seq: 15
+}
+
+delete {
+  url: {{baseUrl}}/api/ingredients/{{createdIngredientId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("Soft delete ingredient returns ok: true", function() {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.ok).to.equal(true);
+  });
+}

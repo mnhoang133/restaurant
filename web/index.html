@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="vi" class="js">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRISPY HOUSE</title>
+  <meta name="description" content="CRISPY HOUSE - Gà rán giòn tan, burger và combo nóng hổi mỗi ngày.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+  <style>html,body{background:#fbf9f6;color:#181414}</style>
+
+  <!-- Google Fonts: Be Vietnam Pro -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN (giữ nguyên cấu hình thiết kế của ứng dụng) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['"Be Vietnam Pro"', 'system-ui', 'sans-serif'] },
+          colors: {
+            ink: { 950: '#ffffff', 900: '#fbf9f6', 850: '#f5f1eb', 800: '#ede8e1', 700: '#e0d9cf', 600: '#c7beb2' },
+            cream: { DEFAULT: '#181414', dim: '#2b2323' },
+            sand: { DEFAULT: '#6e6259', dim: '#8f8278' },
+            brand: { DEFAULT: '#C00707', hi: '#dc1d12', lo: '#8f0505' },
+            ember: '#e05304',
+            gold: '#d97706'
+          },
+          maxWidth: { '7xl': '80rem' }
+        }
+      }
+    };
+  </script>
+
+  <!-- Design system riêng -->
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="min-h-screen flex flex-col">
+  <div id="root" class="min-h-screen flex flex-col"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>

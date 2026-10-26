@@ -1,0 +1,42 @@
+meta {
+  name: 10 - Admin POST Dish with Linked Chef and Ingredient
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/dishes
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "code": "DISH_BRUNO_{{testRunId}}",
+    "name": "Gà Rán Bruno Đặc Biệt",
+    "price": 69000,
+    "category": "Gà Rán",
+    "isAvailable": true,
+    "description": "Món gà rán kiểm thử tự động bằng Bruno CLI",
+    "chefIds": [{{createdChefId}}],
+    "ingredientIds": [{{createdIngredientId}}]
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (body && body.data && body.data.id) {
+    bru.setVar("createdDishId", body.data.id);
+  }
+}
+
+tests {
+  test("Create dish succeeds with ok: true and links chef & ingredient", function() {
+    const body = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(body.ok).to.equal(true);
+    expect(body.data.name).to.equal("Gà Rán Bruno Đặc Biệt");
+    expect(body.data.chefs.length).to.equal(1);
+    expect(body.data.ingredients.length).to.equal(1);
+  });
+}
