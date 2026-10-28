@@ -37,7 +37,15 @@ export default function Layout() {
   useEffect(() => {
     document.body.setAttribute('data-page', activeTab || 'other');
     document.body.classList.add('page-slide-in');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const htmlEl = document.documentElement;
+    const prevBehavior = htmlEl.style.scrollBehavior;
+    htmlEl.style.scrollBehavior = 'auto';
+    window.scrollTo(0, 0);
+    htmlEl.scrollTop = 0;
+    document.body.scrollTop = 0;
+    requestAnimationFrame(() => {
+      htmlEl.style.scrollBehavior = prevBehavior;
+    });
 
     const timer = setTimeout(() => {
       document.body.classList.remove('page-slide-in');

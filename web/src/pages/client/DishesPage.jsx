@@ -1,8 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useGSAP } from '@gsap/react';
 import { apiClient, resolveImageUrl, getDishImageUrl, getCategoryImageUrl } from '../../api/client';
 import Icon from '../../components/Icon';
 import { LoadingView } from '../../components/StateViews';
+
+gsap.registerPlugin(ScrollTrigger, useGSAP);
 
 const DEFAULT_CATEGORIES = [
   'Gà Rán',
@@ -79,6 +84,7 @@ export default function DishesPage() {
   const pendingRef = useRef(false);
   const sentinelRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const gridRef = useRef(null);
 
   // Đồng bộ form khi URL thay đổi (Back / Forward)
   useEffect(() => {
@@ -95,6 +101,29 @@ export default function DishesPage() {
   useEffect(() => {
     document.title = 'Thực đơn món ăn · CRISPY HOUSE';
   }, []);
+
+  // Hàm đưa màn hình lên thẳng vị trí đầu trang tức thì (không bị ngắt quãng bởi ScrollTrigger.refresh hay CSS scroll-behavior)
+  const scrollToTopNow = useCallback(() => {
+    if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) {
+      document.activeElement.blur();
+    }
+    const htmlEl = document.documentElement;
+    const prevBehavior = htmlEl.style.scrollBehavior;
+    htmlEl.style.scrollBehavior = 'auto';
+    window.scrollTo(0, 0);
+    htmlEl.scrollTop = 0;
+    document.body.scrollTop = 0;
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      htmlEl.style.scrollBehavior = prevBehavior;
+      ScrollTrigger.refresh();
+    });
+  }, []);
+
+  // Khi chuyển trang (pageParam đổi), tự động đưa ngay lên vị trí đầu trang
+  useEffect(() => {
+    scrollToTopNow();
+  }, [pageParam, scrollToTopNow]);
 
   // Lấy danh mục thực tế từ backend (chuẩn hóa về mảng chuỗi tên danh mục)
   useEffect(() => {
@@ -204,7 +233,11 @@ export default function DishesPage() {
     setHasMore(!reachedEnd);
 
     setStatus('ok');
-  }, [paginationMode, pageParam, pageSizeParam, buildApiParams]);
+
+    if (paginationMode === 'numbers') {
+      scrollToTopNow();
+    }
+  }, [paginationMode, pageParam, pageSizeParam, buildApiParams, scrollToTopNow]);
 
   useEffect(() => {
     fetchPrimaryDishes();
@@ -363,19 +396,110 @@ export default function DishesPage() {
     });
   };
 
-  // Chuyển trang cho Numbered Pagination
+  // Chuyển trang cho Numbered Pagination: Tự động đưa lên vị trí đầu trang, tránh người dùng phải lướt lên lại
   const handlePageSelect = (targetPage) => {
     if (targetPage < 1 || targetPage > metadata.totalPages || targetPage === metadata.page) {
       return;
     }
+    scrollToTopNow();
     updateUrlParams({ page: targetPage }, false);
-    const menuEl = document.getElementById('menu-dishes-grid');
-    if (menuEl) {
-      menuEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
   };
 
   const displayedDishes = paginationMode === 'numbers' ? dishes : accumulatedDishes;
+
+  // Theo dõi thay đổi kích thước bố cục (Tailwind CDN, mở/đóng bộ lọc nâng cao, tải font) để đồng bộ tọa độ ScrollTrigger
+  useEffect(() => {
+    const containerEl = document.getElementById('menu-container');
+    if (typeof ResizeObserver === 'undefined' || !containerEl) return undefined;
+
+    let rafId;
+    const resizeObs = new ResizeObserver(() => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        ScrollTrigger.refresh();
+      });
+    });
+
+    resizeObs.observe(containerEl);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      resizeObs.disconnect();
+    };
+  }, []);
+
+  // Hiệu ứng GSAP ScrollTrigger: Khi cuộn đến menu, các thẻ món ăn lần lượt bay lên (stagger) mượt mà
+  useGSAP(
+    () => {
+      if (!gridRef.current || !displayedDishes || displayedDishes.length === 0) return;
+
+      const cards = gsap.utils.toArray('.dish-card', gridRef.current);
+      if (!cards.length) return;
+
+      // Chỉ lấy các thẻ mới chưa được đăng ký hoặc chưa hoàn tất hiệu ứng
+      const unvisitedCards = cards.filter(
+        (el) => !el.dataset.gsapPending && !el.dataset.gsapDone
+      );
+      if (unvisitedCards.length === 0) return;
+
+      const mm = gsap.matchMedia();
+
+      mm.add('(prefers-reduced-motion: no-preference)', () => {
+        unvisitedCards.forEach((el) => {
+          el.dataset.gsapPending = 'true';
+        });
+
+        // Đặt trạng thái ban đầu cho các thẻ mới
+        gsap.set(unvisitedCards, { autoAlpha: 0, y: 35 });
+
+        const triggers = ScrollTrigger.batch(unvisitedCards, {
+          interval: 0.06,
+          start: 'top 92%',
+          once: true,
+          onEnter: (batch) => {
+            batch.forEach((el) => {
+              delete el.dataset.gsapPending;
+              el.dataset.gsapDone = 'true';
+            });
+
+            gsap.to(batch, {
+              autoAlpha: 1,
+              y: 0,
+              duration: 0.5,
+              ease: 'power2.out',
+              stagger: 0.07,
+              overwrite: 'auto',
+              onComplete: () => {
+                // Xóa hoàn toàn style inline sau khi bay lên xong để tránh mờ và không xung đột hover CSS
+                gsap.set(batch, { clearProps: 'all' });
+              },
+            });
+          },
+        });
+
+        // Đồng bộ lại tọa độ sau frame vẽ đầu tiên
+        const rafId = requestAnimationFrame(() => {
+          ScrollTrigger.refresh();
+        });
+
+        return () => {
+          cancelAnimationFrame(rafId);
+          triggers.forEach((t) => t.kill());
+          unvisitedCards.forEach((el) => {
+            delete el.dataset.gsapPending;
+          });
+        };
+      });
+
+      mm.add('(prefers-reduced-motion: reduce)', () => {
+        gsap.set(unvisitedCards, { clearProps: 'all' });
+      });
+    },
+    {
+      scope: gridRef,
+      dependencies: [displayedDishes],
+    }
+  );
 
   // Xác định lựa chọn sắp xếp hiện tại
   const currentSortId =
@@ -670,6 +794,7 @@ export default function DishesPage() {
       {status === 'ok' && displayedDishes.length > 0 && (
         <>
           <div
+            ref={gridRef}
             id="menu-dishes-grid"
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
           >
@@ -680,7 +805,7 @@ export default function DishesPage() {
                 <Link
                   key={dish.id}
                   to={`/dishes/${dish.id}`}
-                  className="dish-card group block transition-all"
+                  className="dish-card group block"
                 >
                   {/* Khung ảnh có aspect-ratio cố định chống CLS & lazy loading */}
                   <div className="dish-frame relative overflow-hidden rounded-2xl bg-ink-850">

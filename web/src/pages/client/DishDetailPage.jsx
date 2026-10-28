@@ -279,16 +279,9 @@ export default function DishDetailPage() {
 
           {/* Actions */}
           <div className="pt-6 border-t border-[rgba(0,0,0,0.08)] flex flex-wrap gap-3">
-            <Link to="/dishes" className="btn btn-ghost btn-sm w-full sm:w-auto justify-center">
+            <Link to="/dishes" className="btn btn-primary btn-sm w-full sm:w-auto justify-center">
               <Icon name="arrow-left" cls="w-4 h-4" />
               <span>Xem các món khác</span>
-            </Link>
-            <Link
-              to={`/admin/dishes/${dish.id}/edit`}
-              className="btn btn-primary btn-sm w-full sm:w-auto justify-center"
-            >
-              <Icon name="edit" cls="w-4 h-4" />
-              <span>Chỉnh sửa món này</span>
             </Link>
           </div>
         </div>

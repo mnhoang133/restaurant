@@ -145,6 +145,23 @@ export default function AdminDishesListPage() {
 
   const totalPages = Math.ceil(sortedDishes.length / pageSize) || 1;
 
+  // Khi đổi trang trong bảng quản trị, đưa ngay lên vị trí đầu trang
+  useEffect(() => {
+    if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) {
+      document.activeElement.blur();
+    }
+    const htmlEl = document.documentElement;
+    const prevBehavior = htmlEl.style.scrollBehavior;
+    htmlEl.style.scrollBehavior = 'auto';
+    window.scrollTo(0, 0);
+    htmlEl.scrollTop = 0;
+    document.body.scrollTop = 0;
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      htmlEl.style.scrollBehavior = prevBehavior;
+    });
+  }, [currentPage]);
+
   // Cắt phân trang: Chỉ render 20 dòng trên DOM, giúp bảng phản hồi tức thì < 1ms
   const paginatedDishes = useMemo(() => {
     const safePage = Math.min(Math.max(1, currentPage), totalPages);
