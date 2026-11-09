@@ -44,8 +44,10 @@ pnpm-debug.log*
 Thumbs.db
 *.sw?
 
-# Uploads
+# Uploads & Local Mailbox
 api/public/uploads/*
 !api/public/uploads/.gitkeep
 public/uploads/*
 !public/uploads/.gitkeep
+api/.mailbox/
+.mailbox/

@@ -110,3 +110,80 @@ model DishIngredient {
   @@id([dishId, ingredientId])
   @@map("dish_ingredients")
 }
+
+// 4. Người dùng (Dùng lại bảng users đã có trên DB + cột tokenVersion thu hồi JWT - Slide 41, 61, 64)
+model User {
+  id              Int       @id @default(autoincrement())
+  email           String    @unique
+  rawEmail        String?
+  name            String?
+  passwordHash    String
+  role            String    @default("viewer")
+  status          String    @default("pending") // pending | active
+  emailVerifiedAt DateTime?
+  tokenVersion    Int       @default(0) // Tăng lên khi Reset Password / Logout để thu hồi JWT cũ
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  activationChallenge ActivationChallenge?
+  passwordResets      PasswordReset[]
+
+  @@map("users")
+}
+
+// 5. Thử thách OTP kích hoạt tài khoản (Dùng lại bảng activation_challenges)
+model ActivationChallenge {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @unique
+  purpose     String    @default("activation")
+  otpHash     String
+  expiresAt   DateTime
+  attempts    Int       @default(0)
+  sendCount   Int       @default(1)
+  lockedUntil DateTime?
+  lastSentAt  DateTime  @default(now())
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("activation_challenges")
+}
+
+// 6. Token đặt lại mật khẩu dùng 1 lần (Dùng lại bảng password_resets)
+model PasswordReset {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_resets")
+}
+
+// 7. Bộ đếm đăng nhập sai và giới hạn tần suất (Dùng lại bảng login_attempts)
+model LoginAttempt {
+  id          Int       @id @default(autoincrement())
+  targetKey   String    @unique
+  attempts    Int       @default(0)
+  windowStart DateTime  @default(now())
+  lockedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@map("login_attempts")
+}
+
+// 8. Chống dùng lại token CAPTCHA (Dùng lại bảng used_captcha_tokens)
+model UsedCaptchaToken {
+  tokenHash String   @id
+  purpose   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("used_captcha_tokens")
+}
