@@ -139,6 +139,7 @@ class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        rawEmail: user.rawEmail || user.email,
         name: user.name || user.email.split('@')[0],
         role: user.role,
         status: user.status
@@ -777,6 +778,7 @@ class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        rawEmail: user.rawEmail || user.email,
         name: user.name || user.email.split('@')[0],
         role: user.role,
         status: user.status
