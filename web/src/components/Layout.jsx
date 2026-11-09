@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Icon from './Icon';
 import { subscribeApiLoading } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
 const TABS = [
   { id: 'home', to: '/', label: 'Trang chủ' },
@@ -11,11 +12,21 @@ const TABS = [
 
 export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const pathname = location.pathname;
   const [isApiLoading, setIsApiLoading] = useState(false);
+  const { user, logout } = useAuth();
 
   const desktopNavRef = useRef(null);
   const mobileNavRef = useRef(null);
+
+  const isAuthPath =
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname === '/auth' ||
+    pathname.startsWith('/activate') ||
+    pathname.startsWith('/forgot') ||
+    pathname.startsWith('/reset');
 
   const activeTab =
     pathname === '/'
@@ -24,7 +35,14 @@ export default function Layout() {
       ? 'menu'
       : pathname.startsWith('/admin')
       ? 'admin'
+      : isAuthPath
+      ? 'auth'
       : '';
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login?loggedOut=1', { replace: true });
+  };
 
   // Lắng nghe trạng thái đang gọi API để hiện loading indicator và khóa toàn bộ nút bấm
   useEffect(() => {
@@ -133,8 +151,40 @@ export default function Layout() {
               </span>
             </Link>
 
-            {/* Cột phải giữ cân bằng bố cục lưới trên desktop */}
-            <div className="hidden md:block md:justify-self-end" aria-hidden="true" />
+            {/* Actions & Auth Status */}
+            <div className="flex items-center gap-2.5 md:justify-self-end">
+              {user ? (
+                <>
+                  <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-ink-850 border border-ink-700 text-xs">
+                    <span
+                      className="font-semibold text-cream truncate max-w-[160px]"
+                      title={user.rawEmail || user.email}
+                    >
+                      {user.rawEmail || user.email}
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-ink-800 text-sand uppercase text-[10px] font-semibold">
+                      {user.role}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    id="header-logout-btn"
+                    onClick={handleLogout}
+                    className="btn btn-ghost btn-sm text-xs px-3 py-1.5"
+                  >
+                    Đăng xuất
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/login"
+                  id="header-auth-link"
+                  className="btn btn-primary btn-sm text-xs px-4 py-2"
+                >
+                  Đăng nhập / Đăng ký
+                </Link>
+              )}
+            </div>
           </div>
 
           {/* Tabs (mobile) */}

@@ -879,3 +879,545 @@ body.is-api-loading input[type="submit"] {
   animation: spin 0.7s linear infinite;
 }
 
+/* ==========================================================================
+   Auth Pages — Split Layout (Image 1) & Crimson Studio Palette (Image 2)
+   Bảng màu trích xuất trực tiếp từ nền studio ảnh Burger (#882122 -> #AD2B32 -> #C13840)
+   ========================================================================== */
+:root {
+  --auth-crimson: #ad2b32;
+  --auth-crimson-hi: #c13840;
+  --auth-crimson-lo: #912227;
+  --auth-crimson-deep: #7d1f1d;
+  --auth-crimson-ring: rgba(173, 43, 50, 0.12);
+}
+
+body[data-page='auth'] {
+  --red: #ad2b32;
+  --red-hi: #912227;
+  --red-lo: #7d1f1d;
+  background: #731817;
+}
+
+body[data-page='auth'] > main,
+body[data-page='auth'] #root > main {
+  display: flex;
+  flex-direction: column;
+}
+
+body[data-page='auth'] > footer,
+body[data-page='auth'] #root > footer {
+  display: none;
+}
+
+/* Mục chuyển trang (Nav Tabs): trạng thái tĩnh sạch sẽ, không có thanh chỉ mục trượt theo chuột */
+.nav-tabs a[aria-current='page'] {
+  color: #ffffff;
+  background: linear-gradient(180deg, #d50d08, var(--red));
+  box-shadow: 0 8px 20px -8px rgba(192, 7, 7, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.nav-tabs a:not([aria-current='page']):hover {
+  color: var(--cream);
+  background: transparent;
+}
+
+.nav-indicator {
+  display: none !important;
+}
+
+.btn-outline {
+  background: #ffffff;
+  border-color: var(--line-strong);
+  color: var(--cream);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+.btn-outline:hover {
+  background: #f5f1eb;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Khung toàn màn hình (Full-screen) với nền đỏ studio + ảnh Burger bên trái + thẻ trắng nổi bên phải */
+.auth-section {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: calc(100vh - var(--header-h));
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+  isolation: isolate;
+  background: linear-gradient(
+    180deg,
+    #6f1615 0%,
+    #7d1a1c 20%,
+    #901f23 40%,
+    #a3222b 60%,
+    #af2631 78%,
+    #a4262f 100%
+  );
+}
+
+@media (max-width: 767px) {
+  .auth-section {
+    min-height: calc(100vh - 104px);
+  }
+}
+
+.auth-bg-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.auth-visual-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 65%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+@media (min-width: 1024px) {
+  .auth-visual-img {
+    inset: 0 auto 0 0;
+    width: 65%;
+    height: 100%;
+    object-position: center 72%;
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      #000000 0%,
+      #000000 68%,
+      rgba(0, 0, 0, 0.5) 85%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      #000000 0%,
+      #000000 68%,
+      rgba(0, 0, 0, 0.5) 85%,
+      transparent 100%
+    );
+  }
+}
+
+.auth-visual-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(92, 14, 16, 0.38) 0%,
+    rgba(120, 24, 26, 0.1) 36%,
+    rgba(0, 0, 0, 0) 60%
+  );
+}
+
+.auth-visual-arcs {
+  position: absolute;
+  left: -58px;
+  bottom: -86px;
+  width: 380px;
+  height: 380px;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* Lưới bố cục nội dung: Thương hiệu góc trên bên trái & Thẻ trắng nổi bên phải */
+.auth-card {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 16px 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 28px;
+}
+
+@media (min-width: 640px) {
+  .auth-card {
+    padding: 40px 32px 52px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .auth-card {
+    padding: 48px 56px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 432px;
+    gap: 56px;
+    align-items: center;
+  }
+}
+
+.auth-visual {
+  position: relative;
+  z-index: 2;
+  max-width: 520px;
+}
+
+@media (min-width: 1024px) {
+  .auth-visual {
+    align-self: start;
+    padding-top: 16px;
+  }
+}
+
+.auth-visual-content {
+  position: relative;
+}
+
+.auth-visual-title {
+  font-size: clamp(30px, 3.2vw, 42px);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  text-shadow: 0 2px 16px rgba(70, 10, 12, 0.28);
+}
+
+.auth-visual-sub {
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 10px rgba(70, 10, 12, 0.24);
+}
+
+/* Cột phải: Thẻ nền trắng nổi bật trên nền đỏ toàn màn hình */
+.auth-panel {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 432px;
+  margin-inline: auto;
+  background: #ffffff;
+  border-radius: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 24px;
+  box-shadow:
+    0 32px 72px -14px rgba(38, 4, 6, 0.52),
+    0 14px 32px -10px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+@media (min-width: 640px) {
+  .auth-panel {
+    padding: 42px 38px;
+  }
+}
+
+.auth-form-box {
+  width: 100%;
+  max-width: 356px;
+}
+
+.auth-heading {
+  font-size: 26px;
+  font-weight: 800;
+  color: #1f1919;
+  letter-spacing: -0.02em;
+  line-height: 1.22;
+}
+
+.auth-subheading {
+  margin-top: 5px;
+  font-size: 14.5px;
+  font-weight: 400;
+  color: #5c524d;
+  line-height: 1.5;
+}
+
+/* Ô nhập liệu bo tròn dạng viên thuốc (Pill Input) có icon bên trái */
+.auth-pill-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-pill-icon {
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #b7afab;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  transition: color 0.2s ease;
+}
+
+.auth-pill-input {
+  display: block;
+  width: 100%;
+  height: 52px;
+  padding: 0 22px 0 52px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1.5px solid #ece7e4;
+  color: #1f1919;
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: normal;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.auth-pill-input::placeholder {
+  color: #b7afab;
+  font-weight: 400;
+}
+
+.auth-pill-input:hover {
+  border-color: #d9cfcb;
+}
+
+.auth-pill-input:focus {
+  outline: none;
+  border-color: var(--auth-crimson);
+  box-shadow: 0 0 0 4px var(--auth-crimson-ring);
+  background: #ffffff;
+}
+
+.auth-pill-group:focus-within .auth-pill-icon {
+  color: var(--auth-crimson);
+}
+
+.auth-pill-input.has-toggle {
+  padding-right: 48px;
+}
+
+.auth-pill-input::-ms-reveal,
+.auth-pill-input::-ms-clear {
+  display: none;
+}
+
+/* Đồng bộ hoàn toàn màu nền trắng & màu chữ sau khi nhập / tự động điền (autofill) giữa tất cả các ô */
+.auth-pill-input:-webkit-autofill,
+.auth-pill-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #1f1919 !important;
+  caret-color: #1f1919;
+  border-color: #ece7e4;
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif !important;
+  transition: background-color 99999s ease-in-out 0s;
+}
+
+.auth-pill-input:-webkit-autofill:hover {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #1f1919 !important;
+  caret-color: #1f1919;
+  border-color: #d9cfcb;
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif !important;
+  transition: background-color 99999s ease-in-out 0s;
+}
+
+.auth-pill-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset, 0 0 0 4px var(--auth-crimson-ring) !important;
+  box-shadow: 0 0 0 1000px #ffffff inset, 0 0 0 4px var(--auth-crimson-ring) !important;
+  -webkit-text-fill-color: #1f1919 !important;
+  caret-color: #1f1919;
+  border-color: var(--auth-crimson);
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif !important;
+  transition: background-color 99999s ease-in-out 0s;
+}
+
+.auth-pill-input:autofill {
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #1f1919 !important;
+  color: #1f1919 !important;
+  background-color: #ffffff !important;
+}
+
+.auth-pill-input:autofill:focus {
+  box-shadow: 0 0 0 1000px #ffffff inset, 0 0 0 4px var(--auth-crimson-ring) !important;
+  border-color: var(--auth-crimson);
+}
+
+.auth-pill-input.is-invalid {
+  border-color: var(--auth-crimson-hi);
+  background: #fffafa;
+}
+
+.auth-field-error {
+  margin-top: 6px;
+  padding-left: 18px;
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--auth-crimson);
+  line-height: 1.45;
+}
+
+.auth-pw-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: #b7afab;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.auth-pw-toggle:hover {
+  color: var(--auth-crimson);
+  background: rgba(173, 43, 50, 0.07);
+}
+
+/* Các nút tương tác đồng bộ trực tiếp với màu nền đỏ studio của Ảnh 2 */
+.auth-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 52px;
+  padding: 0 26px;
+  border-radius: 999px;
+  border: none;
+  background: var(--auth-crimson);
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 12px 26px -8px rgba(173, 43, 50, 0.52);
+  transition: background-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.auth-btn-primary:hover {
+  background: var(--auth-crimson-lo);
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px -8px rgba(145, 34, 39, 0.6);
+}
+
+.auth-btn-primary:active {
+  background: var(--auth-crimson-deep);
+  transform: translateY(0) scale(0.985);
+}
+
+.auth-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(173, 43, 50, 0.34);
+  background: rgba(173, 43, 50, 0.04);
+  color: var(--auth-crimson);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.auth-btn-outline:hover {
+  background: var(--auth-crimson);
+  border-color: var(--auth-crimson);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -8px rgba(173, 43, 50, 0.45);
+}
+
+.auth-btn-outline:active {
+  background: var(--auth-crimson-deep);
+  transform: translateY(0) scale(0.985);
+}
+
+.auth-link-muted {
+  display: inline-block;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #7c726d;
+  transition: color 0.2s ease;
+}
+
+.auth-link-muted:hover {
+  color: var(--auth-crimson);
+}
+
+.auth-link-accent {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--auth-crimson);
+  transition: color 0.2s ease;
+}
+
+.auth-link-accent:hover {
+  color: var(--auth-crimson-deep);
+  text-decoration: underline;
+}
+
+/* Thông báo trạng thái & hộp Google reCAPTCHA (đồng bộ hoàn toàn font chữ với bên ngoài) */
+.auth-alert {
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  border-radius: 16px;
+  padding: 13px 16px;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.55;
+}
+
+.auth-alert-error {
+  background: #fdf2f3;
+  border: 1px solid #f3c1c6;
+  color: #882122;
+}
+
+.auth-alert-success {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+.auth-alert-info {
+  background: #faf5f5;
+  border: 1px solid #ead8d9;
+  color: #4a2c2d;
+}
+
+.auth-captcha-wrap {
+  padding: 12px 10px;
+  border-radius: 18px;
+  background: #fcf9f9;
+  border: 1px solid #ece3e2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+@media (max-width: 390px) {
+  .auth-captcha-wrap .g-recaptcha {
+    transform: scale(0.86);
+    transform-origin: center;
+  }
+}
+
+

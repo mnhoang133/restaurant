@@ -122,16 +122,24 @@ async function request(endpoint, { method = 'GET', body = undefined, signal = un
     signal,
   };
 
+  const headers = {};
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   // Chỉ đặt Content-Type khi có body dạng JSON; nếu là FormData (upload ảnh) thì để trình duyệt tự gắn boundary; GET không gắn Content-Type
   if (body !== undefined && body !== null) {
     if (body instanceof FormData) {
       options.body = body;
     } else {
-      options.headers = {
-        'Content-Type': 'application/json',
-      };
+      headers['Content-Type'] = 'application/json';
       options.body = JSON.stringify(body);
     }
+  }
+
+  if (Object.keys(headers).length > 0) {
+    options.headers = headers;
   }
 
   activeRequestCount += 1;
@@ -165,17 +173,86 @@ async function request(endpoint, { method = 'GET', body = undefined, signal = un
       };
     }
 
-    // TẦNG 2: Kiểm tra HTTP Status (404 sai URL, 500 lỗi hệ thống, 400 lỗi cú pháp body)
+    // TẦNG 2: Kiểm tra HTTP Status (401, 403, 429, 404 sai URL, 500 lỗi hệ thống, 400 lỗi cú pháp body)
     if (!response.ok) {
+      let errInfo = {};
+      try {
+        const errPayload = await response.json();
+        if (errPayload && typeof errPayload === 'object') {
+          errInfo = errPayload.error || errPayload;
+        }
+      } catch (_) {
+        // Bỏ qua nếu body lỗi không phải JSON
+      }
+
+      if (response.status === 401) {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('accessToken');
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+        }
+        return {
+          ok: false,
+          error: {
+            type: 'auth',
+            status: 401,
+            code: errInfo.code || 'UNAUTHENTICATED',
+            message:
+              errInfo.message || 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.',
+            requireCaptcha: errInfo.requireCaptcha,
+            email: errInfo.email,
+            fields: errInfo.fields || {},
+          },
+        };
+      }
+
+      if (response.status === 403) {
+        return {
+          ok: false,
+          error: {
+            type: 'forbidden',
+            status: 403,
+            code: errInfo.code || 'FORBIDDEN',
+            message: errInfo.message || 'Bạn không có quyền thực hiện thao tác này.',
+            requireCaptcha: errInfo.requireCaptcha,
+            email: errInfo.email,
+            fields: errInfo.fields || {},
+          },
+        };
+      }
+
+      if (response.status === 429) {
+        return {
+          ok: false,
+          error: {
+            type: 'rate_limit',
+            status: 429,
+            code: errInfo.code || 'RATE_LIMITED',
+            message:
+              errInfo.message ||
+              'Bạn đã thao tác quá nhanh trong thời gian ngắn. Vui lòng đợi ít phút rồi thử lại.',
+            requireCaptcha: errInfo.requireCaptcha,
+            email: errInfo.email,
+            fields: errInfo.fields || {},
+          },
+        };
+      }
+
       return {
         ok: false,
         error: {
           type: 'technical',
-          code: `HTTP_${response.status}`,
+          status: response.status,
+          code: errInfo.code || `HTTP_${response.status}`,
           message:
-            response.status === 404
+            errInfo.message ||
+            (response.status === 404
               ? `Lỗi kỹ thuật (404): Đường dẫn API '${endpoint}' không tồn tại.`
-              : `Lỗi kỹ thuật từ máy chủ (HTTP ${response.status}). Hệ thống không thể xử lý yêu cầu lúc này.`,
+              : `Lỗi kỹ thuật từ máy chủ (HTTP ${response.status}). Hệ thống không thể xử lý yêu cầu lúc này.`),
+          requireCaptcha: errInfo.requireCaptcha,
+          email: errInfo.email,
+          fields: errInfo.fields || {},
         },
       };
     }
@@ -216,6 +293,8 @@ async function request(endpoint, { method = 'GET', body = undefined, signal = un
           code: errInfo.code || 'BUSINESS_ERROR',
           message: errInfo.message || 'Yêu cầu không hợp lệ theo quy tắc nghiệp vụ.',
           fields: errInfo.fields || {},
+          requireCaptcha: errInfo.requireCaptcha,
+          email: errInfo.email,
         },
       };
     }
@@ -282,5 +361,22 @@ export const apiClient = {
     update: (id, payload) =>
       request(`/ingredients/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload }),
     remove: (id) => request(`/ingredients/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  },
+
+  // 4. XÁC THỰC & TÀI KHOẢN (/api/auth)
+  auth: {
+    register: (body) => request('/auth/register', { method: 'POST', body }),
+    activate: (body) => request('/auth/activate', { method: 'POST', body }),
+    resendOtp: (body) => request('/auth/resend-otp', { method: 'POST', body }),
+    login: (body) => request('/auth/login', { method: 'POST', body }),
+    me: (signal) => request('/auth/me', { method: 'GET', signal }),
+    logout: () => request('/auth/logout', { method: 'POST' }),
+    forgotPassword: (body) => request('/auth/forgot-password', { method: 'POST', body }),
+    verifyResetToken: (token, signal) =>
+      request(`/auth/reset-password/verify?token=${encodeURIComponent(token)}`, {
+        method: 'GET',
+        signal,
+      }),
+    resetPassword: (body) => request('/auth/reset-password', { method: 'POST', body }),
   },
 };

@@ -1,7 +1,15 @@
 import React from 'react';
 import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom';
 import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
 import { NotFoundView } from './components/StateViews';
+import { AuthProvider } from './context/AuthContext';
+
+// Auth Pages
+import LoginPage from './pages/auth/LoginPage';
+import ActivatePage from './pages/auth/ActivatePage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 
 // Client Pages
 import HomePage from './pages/client/HomePage';
@@ -32,32 +40,49 @@ const router = createHashRouter([
       { path: 'dishes', element: <DishesPage /> },
       { path: 'dishes/:id', element: <DishDetailPage /> },
 
-      // Admin root chuyển hướng thẳng vào Quản lý món ăn (đã loại bỏ tab Tổng quan)
-      { path: 'admin', element: <Navigate to="/admin/dishes" replace /> },
+      // Auth Routes (theo đúng Hợp đồng API & tương thích cả đường dẫn rút gọn)
+      { path: 'login', element: <LoginPage initialTab="login" /> },
+      { path: 'register', element: <LoginPage initialTab="register" /> },
+      { path: 'auth', element: <LoginPage initialTab="login" /> },
+      { path: 'activate', element: <ActivatePage /> },
+      { path: 'forgot-password', element: <ForgotPasswordPage /> },
+      { path: 'forgot', element: <ForgotPasswordPage /> },
+      { path: 'reset-password', element: <ResetPasswordPage /> },
+      { path: 'reset', element: <ResetPasswordPage /> },
 
-      // Admin Dishes CRUD
-      { path: 'admin/dishes', element: <AdminDishesListPage /> },
-      { path: 'admin/dishes/new', element: <AdminDishFormPage mode="create" key="dish-create" /> },
-      { path: 'admin/dishes/:id/edit', element: <AdminDishFormPage mode="edit" key="dish-edit" /> },
-      { path: 'admin/dishes/:id/delete', element: <AdminDishDeletePage /> },
-
-      // Admin Chefs CRUD
-      { path: 'admin/chefs', element: <AdminChefsListPage /> },
-      { path: 'admin/chefs/new', element: <AdminChefFormPage mode="create" key="chef-create" /> },
-      { path: 'admin/chefs/:id/edit', element: <AdminChefFormPage mode="edit" key="chef-edit" /> },
-      { path: 'admin/chefs/:id/delete', element: <AdminChefDeletePage /> },
-
-      // Admin Ingredients CRUD
-      { path: 'admin/ingredients', element: <AdminIngredientsListPage /> },
+      // Toàn bộ các route /admin/* được bảo vệ bởi ProtectedRoute
       {
-        path: 'admin/ingredients/new',
-        element: <AdminIngredientFormPage mode="create" key="ing-create" />,
+        path: 'admin',
+        element: <ProtectedRoute />,
+        children: [
+          // Admin root chuyển hướng thẳng vào Quản lý món ăn
+          { index: true, element: <Navigate to="/admin/dishes" replace /> },
+
+          // Admin Dishes CRUD
+          { path: 'dishes', element: <AdminDishesListPage /> },
+          { path: 'dishes/new', element: <AdminDishFormPage mode="create" key="dish-create" /> },
+          { path: 'dishes/:id/edit', element: <AdminDishFormPage mode="edit" key="dish-edit" /> },
+          { path: 'dishes/:id/delete', element: <AdminDishDeletePage /> },
+
+          // Admin Chefs CRUD
+          { path: 'chefs', element: <AdminChefsListPage /> },
+          { path: 'chefs/new', element: <AdminChefFormPage mode="create" key="chef-create" /> },
+          { path: 'chefs/:id/edit', element: <AdminChefFormPage mode="edit" key="chef-edit" /> },
+          { path: 'chefs/:id/delete', element: <AdminChefDeletePage /> },
+
+          // Admin Ingredients CRUD
+          { path: 'ingredients', element: <AdminIngredientsListPage /> },
+          {
+            path: 'ingredients/new',
+            element: <AdminIngredientFormPage mode="create" key="ing-create" />,
+          },
+          {
+            path: 'ingredients/:id/edit',
+            element: <AdminIngredientFormPage mode="edit" key="ing-edit" />,
+          },
+          { path: 'ingredients/:id/delete', element: <AdminIngredientDeletePage /> },
+        ],
       },
-      {
-        path: 'admin/ingredients/:id/edit',
-        element: <AdminIngredientFormPage mode="edit" key="ing-edit" />,
-      },
-      { path: 'admin/ingredients/:id/delete', element: <AdminIngredientDeletePage /> },
 
       // Fallback 404 cho các URL không khớp trong SPA
       {
@@ -76,5 +101,9 @@ const router = createHashRouter([
 ]);
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }
