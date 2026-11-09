@@ -221,7 +221,7 @@ export default function AdminDishesListPage() {
               {/* Hàng bộ lọc và sắp xếp */}
               <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-line/60 text-xs">
                 {/* Lọc danh mục */}
-                <div className="flex items-center gap-1.5 flex-1 sm:flex-initial min-w-[140px]">
+                <div className="flex items-center gap-1.5 w-full sm:w-auto sm:flex-initial min-w-0">
                   <span className="text-sand-dim font-medium whitespace-nowrap">Danh mục:</span>
                   <select
                     value={categoryInput}
@@ -230,7 +230,7 @@ export default function AdminDishesListPage() {
                       setCategoryInput(val);
                       applyFilterParams(searchInput, val, isAvailableInput, sortInput);
                     }}
-                    className="field text-xs h-9 py-1 flex-1"
+                    className="field text-xs h-9 py-1 flex-1 min-w-0"
                   >
                     <option value="">Tất cả</option>
                     {categories.map((cat) => (
@@ -242,7 +242,7 @@ export default function AdminDishesListPage() {
                 </div>
 
                 {/* Lọc trạng thái */}
-                <div className="flex items-center gap-1.5 flex-1 sm:flex-initial min-w-[140px]">
+                <div className="flex items-center gap-1.5 w-full sm:w-auto sm:flex-initial min-w-0">
                   <span className="text-sand-dim font-medium whitespace-nowrap">Trạng thái:</span>
                   <select
                     value={isAvailableInput}
@@ -251,7 +251,7 @@ export default function AdminDishesListPage() {
                       setIsAvailableInput(val);
                       applyFilterParams(searchInput, categoryInput, val, sortInput);
                     }}
-                    className="field text-xs h-9 py-1 flex-1"
+                    className="field text-xs h-9 py-1 flex-1 min-w-0"
                   >
                     <option value="">Tất cả</option>
                     <option value="true">Đang phục vụ</option>
@@ -260,7 +260,7 @@ export default function AdminDishesListPage() {
                 </div>
 
                 {/* Sắp xếp */}
-                <div className="flex items-center gap-1.5 flex-1 sm:flex-initial min-w-[160px]">
+                <div className="flex items-center gap-1.5 w-full sm:w-auto sm:flex-initial min-w-0">
                   <span className="text-sand-dim font-medium whitespace-nowrap">Sắp xếp:</span>
                   <select
                     value={sortInput}
@@ -269,7 +269,7 @@ export default function AdminDishesListPage() {
                       setSortInput(val);
                       applyFilterParams(searchInput, categoryInput, isAvailableInput, val);
                     }}
-                    className="field text-xs h-9 py-1 flex-1"
+                    className="field text-xs h-9 py-1 flex-1 min-w-0"
                   >
                     <option value="newest">Mới nhất</option>
                     <option value="oldest">Cũ nhất</option>
@@ -280,11 +280,11 @@ export default function AdminDishesListPage() {
                   </select>
                 </div>
 
-                <div className="flex items-center gap-2 ml-auto">
+                <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto justify-end">
                   <button
                     type="submit"
                     disabled={status === 'loading'}
-                    className="btn btn-primary h-9 px-4 text-xs justify-center"
+                    className="btn btn-primary h-9 px-4 text-xs justify-center flex-1 sm:flex-initial"
                   >
                     <span>Lọc</span>
                   </button>
@@ -294,7 +294,7 @@ export default function AdminDishesListPage() {
                       type="button"
                       onClick={handleClearFilter}
                       disabled={status === 'loading'}
-                      className="btn btn-ghost h-9 px-3 text-xs justify-center text-sand hover:text-cream"
+                      className="btn btn-ghost h-9 px-3 text-xs justify-center text-sand hover:text-cream flex-1 sm:flex-initial"
                       title="Xóa bộ lọc"
                     >
                       <Icon name="x" cls="w-3.5 h-3.5" />
@@ -320,8 +320,90 @@ export default function AdminDishesListPage() {
 
           {status === 'ok' && (
             <div className="card overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="table">
+              {/* Giao diện Mobile (< 768px): Dạng thẻ dọc vừa khít 100% chiều ngang, không cần cuộn ngang */}
+              <div className="md:hidden divide-y divide-line">
+                {paginatedDishes.length > 0 ? (
+                  paginatedDishes.map((dish) => {
+                    const img = getDishImageUrl(dish);
+                    return (
+                      <div key={dish.id} className="p-4 space-y-3">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <img
+                            src={img}
+                            alt={dish.name}
+                            className="thumb object-cover flex-shrink-0"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = getCategoryImageUrl(dish.category);
+                            }}
+                          />
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="font-bold text-sm text-cream break-words leading-snug">
+                              {dish.name}
+                            </div>
+                            {dish.description && (
+                              <p className="text-xs text-sand-dim line-clamp-2 break-words">
+                                {dish.description}
+                              </p>
+                            )}
+                            <div className="font-mono font-bold text-ember text-sm pt-0.5">
+                              {Number(dish.price).toLocaleString('vi-VN')}&nbsp;đ
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-line/50">
+                          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                            <span className="badge text-[11px]">{dish.category}</span>
+                            {dish.isAvailable ? (
+                              <span className="badge badge-ok badge-dot text-[11px]">
+                                Đang phục vụ
+                              </span>
+                            ) : (
+                              <span className="badge badge-off badge-dot text-[11px]">
+                                Tạm ngưng
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="inline-flex items-center gap-1.5 flex-shrink-0">
+                            <Link
+                              to={`/dishes/${dish.id}`}
+                              className="icon-btn w-8 h-8"
+                              aria-label="Xem"
+                            >
+                              <Icon name="eye" cls="w-3.5 h-3.5" />
+                            </Link>
+                            <Link
+                              to={`/admin/dishes/${dish.id}/edit`}
+                              className="icon-btn w-8 h-8"
+                              aria-label="Sửa"
+                            >
+                              <Icon name="edit" cls="w-3.5 h-3.5" />
+                            </Link>
+                            <Link
+                              to={`/admin/dishes/${dish.id}/delete`}
+                              className="icon-btn is-danger w-8 h-8"
+                              aria-label="Xóa"
+                            >
+                              <Icon name="trash" cls="w-3.5 h-3.5" />
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-12 px-4 text-sand-dim text-xs">
+                    Không tìm thấy món ăn nào phù hợp với bộ lọc.
+                  </div>
+                )}
+              </div>
+
+              {/* Giao diện Tablet & Desktop (>= 768px): Bảng đầy đủ cột */}
+              <div className="hidden md:block">
+                <table className="table w-full">
                   <thead>
                     <tr>
                       <th className="w-16">Hình ảnh</th>
@@ -351,10 +433,10 @@ export default function AdminDishesListPage() {
                               />
                             </td>
 
-                            <td>
-                              <div className="font-bold text-cream">{dish.name}</div>
+                            <td className="max-w-xs break-words">
+                              <div className="font-bold text-cream break-words">{dish.name}</div>
                               {dish.description && (
-                                <p className="text-xs text-sand-dim line-clamp-1 mt-0.5">
+                                <p className="text-xs text-sand-dim line-clamp-1 mt-0.5 break-words">
                                   {dish.description}
                                 </p>
                               )}

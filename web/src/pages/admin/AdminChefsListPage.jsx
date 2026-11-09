@@ -137,7 +137,7 @@ export default function AdminChefsListPage() {
               {/* Hàng bộ lọc và sắp xếp */}
               <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-line/60 text-xs">
                 {/* Lọc chuyên môn */}
-                <div className="flex items-center gap-1.5 flex-1 sm:flex-initial min-w-[150px]">
+                <div className="flex items-center gap-1.5 w-full sm:w-auto sm:flex-initial min-w-0">
                   <span className="text-sand-dim font-medium whitespace-nowrap">Chuyên môn:</span>
                   <select
                     value={fieldInput}
@@ -146,7 +146,7 @@ export default function AdminChefsListPage() {
                       setFieldInput(val);
                       applyFilters(searchInput, val, sortInput);
                     }}
-                    className="field text-xs h-9 py-1 flex-1"
+                    className="field text-xs h-9 py-1 flex-1 min-w-0"
                   >
                     <option value="">Tất cả chuyên môn</option>
                     {uniqueFields.map((f) => (
@@ -158,7 +158,7 @@ export default function AdminChefsListPage() {
                 </div>
 
                 {/* Sắp xếp */}
-                <div className="flex items-center gap-1.5 flex-1 sm:flex-initial min-w-[170px]">
+                <div className="flex items-center gap-1.5 w-full sm:w-auto sm:flex-initial min-w-0">
                   <span className="text-sand-dim font-medium whitespace-nowrap">Sắp xếp:</span>
                   <select
                     value={sortInput}
@@ -167,7 +167,7 @@ export default function AdminChefsListPage() {
                       setSortInput(val);
                       applyFilters(searchInput, fieldInput, val);
                     }}
-                    className="field text-xs h-9 py-1 flex-1"
+                    className="field text-xs h-9 py-1 flex-1 min-w-0"
                   >
                     <option value="name_asc">Tên: A → Z</option>
                     <option value="name_desc">Tên: Z → A</option>
@@ -178,11 +178,11 @@ export default function AdminChefsListPage() {
                   </select>
                 </div>
 
-                <div className="flex items-center gap-2 ml-auto">
+                <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto justify-end">
                   <button
                     type="submit"
                     disabled={status === 'loading'}
-                    className="btn btn-primary h-9 px-4 text-xs justify-center"
+                    className="btn btn-primary h-9 px-4 text-xs justify-center flex-1 sm:flex-initial"
                   >
                     <span>Lọc</span>
                   </button>
@@ -192,7 +192,7 @@ export default function AdminChefsListPage() {
                       type="button"
                       onClick={handleClearSearch}
                       disabled={status === 'loading'}
-                      className="btn btn-ghost h-9 px-3 text-xs justify-center text-sand hover:text-cream"
+                      className="btn btn-ghost h-9 px-3 text-xs justify-center text-sand hover:text-cream flex-1 sm:flex-initial"
                       title="Xóa lọc"
                     >
                       <Icon name="x" cls="w-3.5 h-3.5" />
@@ -234,21 +234,23 @@ export default function AdminChefsListPage() {
                       className="card p-6 flex flex-col justify-between space-y-4"
                     >
                       <div className="space-y-4">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 min-w-0">
                           {avatar ? (
                             <img
                               src={avatar}
                               alt={chef.name}
-                              className="w-16 h-16 rounded-2xl object-cover border border-line"
+                              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border border-line flex-shrink-0"
                             />
                           ) : (
-                            <div className="w-16 h-16 rounded-2xl bg-brand/10 border border-brand/20 grid place-items-center text-brand font-bold text-xl">
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-brand/10 border border-brand/20 grid place-items-center text-brand font-bold text-xl flex-shrink-0">
                               {chef.name.charAt(0)}
                             </div>
                           )}
-                          <div>
-                            <h3 className="font-bold text-lg text-cream">{chef.name}</h3>
-                            <p className="text-xs text-ember font-semibold mt-0.5">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-bold text-base sm:text-lg text-cream break-words">
+                              {chef.name}
+                            </h3>
+                            <p className="text-xs text-ember font-semibold mt-0.5 break-words">
                               {chef.field}
                             </p>
                           </div>
@@ -256,26 +258,30 @@ export default function AdminChefsListPage() {
 
                         {/* YÊU CẦU: CHỈ HIỂN THỊ SỐ NĂM KINH NGHIỆM VÀ SỐ MÓN PHỤ TRÁCH */}
                         <div className="py-3 border-y border-line space-y-2 text-xs">
-                          <div className="flex justify-between items-center">
+                          <div className="flex justify-between items-center gap-2">
                             <span className="text-sand-dim">Kinh nghiệm chuyên môn:</span>
-                            <span className="font-bold text-cream">{chef.experience} năm</span>
+                            <span className="font-bold text-cream whitespace-nowrap">
+                              {chef.experience} năm
+                            </span>
                           </div>
-                          <div className="flex justify-between items-center">
+                          <div className="flex justify-between items-center gap-2">
                             <span className="text-sand-dim">Số món phụ trách:</span>
-                            <span className="font-bold text-brand">{cookedDishes.length} món</span>
+                            <span className="font-bold text-brand whitespace-nowrap">
+                              {cookedDishes.length} món
+                            </span>
                           </div>
                         </div>
                       </div>
 
                       {/* Các nút hành động: Xem chi tiết (mở modal danh sách món), Sửa, Xóa */}
-                      <div className="flex items-center justify-between pt-2 border-t border-line">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-line">
                         <button
                           type="button"
                           onClick={() => setSelectedChefForDetail(chef)}
-                          className="btn btn-ghost btn-xs text-brand hover:text-brand font-semibold flex items-center gap-1.5"
+                          className="btn btn-ghost btn-xs text-brand hover:text-brand font-semibold flex items-center gap-1.5 min-w-0"
                         >
                           <Icon name="eye" cls="w-3.5 h-3.5" />
-                          <span>Xem món phụ trách ({cookedDishes.length})</span>
+                          <span className="truncate">Xem món phụ trách ({cookedDishes.length})</span>
                         </button>
 
                         <div className="flex items-center gap-1.5">

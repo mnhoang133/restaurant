@@ -123,16 +123,16 @@ export default function AdminDishDeletePage() {
 
               {/* Dish Summary Box */}
               <div className="p-4 rounded-2xl bg-ink-950/60 border border-line text-left space-y-2.5 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="text-sand-dim font-semibold uppercase">Tên món:</span>
-                  <span className="font-bold text-cream">{dish.name}</span>
+                <div className="flex justify-between items-start gap-3">
+                  <span className="text-sand-dim font-semibold uppercase flex-shrink-0">Tên món:</span>
+                  <span className="font-bold text-cream text-right break-words min-w-0">{dish.name}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sand-dim font-semibold uppercase">Danh mục:</span>
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-sand-dim font-semibold uppercase flex-shrink-0">Danh mục:</span>
                   <span className="badge text-[11px]">{dish.category}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sand-dim font-semibold uppercase">Giá bán:</span>
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-sand-dim font-semibold uppercase flex-shrink-0">Giá bán:</span>
                   <span className="font-mono font-bold text-ember whitespace-nowrap">
                     {Number(dish.price).toLocaleString('vi-VN')}&nbsp;đ
                   </span>

@@ -97,22 +97,24 @@ export default function DishDetailPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
       {/* Breadcrumbs & Quick Return */}
-      <div className="flex items-center justify-between text-xs text-sand">
-        <nav className="flex items-center gap-2" aria-label="Đường dẫn">
-          <Link to="/" className="hover:text-cream transition-colors">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-sand">
+        <nav className="flex items-center gap-2 min-w-0 flex-1" aria-label="Đường dẫn">
+          <Link to="/" className="hover:text-cream transition-colors flex-shrink-0">
             Trang chủ
           </Link>
-          <span className="text-sand/40">/</span>
-          <Link to="/dishes" className="hover:text-cream transition-colors">
+          <span className="text-sand/40 flex-shrink-0">/</span>
+          <Link to="/dishes" className="hover:text-cream transition-colors flex-shrink-0">
             Menu
           </Link>
-          <span className="text-sand/40">/</span>
-          <span className="text-cream font-medium truncate max-w-[200px]">{dish.name}</span>
+          <span className="text-sand/40 flex-shrink-0">/</span>
+          <span className="text-cream font-medium truncate min-w-0 max-w-[160px] sm:max-w-[240px]">
+            {dish.name}
+          </span>
         </nav>
 
         <Link
           to="/dishes"
-          className="inline-flex items-center gap-1.5 text-sand hover:text-cream transition-colors"
+          className="inline-flex items-center gap-1.5 text-sand hover:text-cream transition-colors flex-shrink-0"
         >
           <Icon name="arrow-left" cls="w-4 h-4" />
           <span>Trở lại Menu</span>
@@ -150,7 +152,7 @@ export default function DishDetailPage() {
 
           {/* Multiple Image Strip */}
           {images.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto pb-2">
+            <div className="flex flex-wrap gap-2.5 sm:gap-3 pb-1">
               {images.map((img, idx) => (
                 <button
                   key={img.id || idx}
@@ -230,19 +232,19 @@ export default function DishDetailPage() {
                       ? resolveImageUrl(chef.images[0].imageUrl)
                       : null;
                   return (
-                    <div key={chef.id} className="person-chip">
+                    <div key={chef.id} className="person-chip max-w-full min-w-0">
                       {chefImg ? (
                         <img
                           src={chefImg}
                           alt={chef.name}
-                          className="w-9 h-9 rounded-full object-cover border border-line"
+                          className="w-9 h-9 rounded-full object-cover border border-line flex-shrink-0"
                         />
                       ) : (
-                        <div className="initial">{chef.name.charAt(0)}</div>
+                        <div className="initial flex-shrink-0">{chef.name.charAt(0)}</div>
                       )}
-                      <div>
-                        <div className="text-xs font-bold text-cream">{chef.name}</div>
-                        <div className="text-[10px] text-sand-dim">
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-cream break-words">{chef.name}</div>
+                        <div className="text-[10px] text-sand-dim break-words">
                           {chef.field} · {chef.experience} năm kinh nghiệm
                         </div>
                       </div>

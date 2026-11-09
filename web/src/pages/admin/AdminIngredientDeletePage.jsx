@@ -122,9 +122,9 @@ export default function AdminIngredientDeletePage() {
               )}
 
               <div className="p-4 rounded-2xl bg-ink-950/60 border border-line text-left space-y-2 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="text-sand-dim font-semibold uppercase">Tên nguyên liệu:</span>
-                  <span className="font-bold text-cream">{ingredient.name}</span>
+                <div className="flex justify-between items-start gap-3">
+                  <span className="text-sand-dim font-semibold uppercase flex-shrink-0">Tên nguyên liệu:</span>
+                  <span className="font-bold text-cream text-right break-words min-w-0">{ingredient.name}</span>
                 </div>
               </div>
 

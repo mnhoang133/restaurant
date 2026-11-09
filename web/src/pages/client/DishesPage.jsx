@@ -575,10 +575,10 @@ export default function DishesPage() {
         </div>
 
         {/* ẢNH 2: CHỈ HIỂN THỊ CÁC NÚT CHUYỂN ĐỔI PHÂN TRANG (TỐI GIẢN, KHÔNG HIỆN THÔNG TIN TECH) */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto self-start sm:self-auto">
           <span className="text-xs text-sand font-medium hidden md:inline">Xem theo:</span>
           <div
-            className="inline-flex p-1 bg-ink-850 rounded-xl border border-[rgba(0,0,0,0.06)]"
+            className="grid grid-cols-3 sm:inline-flex p-1 bg-ink-850 rounded-xl border border-[rgba(0,0,0,0.06)] w-full sm:w-auto"
             role="group"
             aria-label="Kiểu hiển thị phân trang"
           >
@@ -589,7 +589,7 @@ export default function DishesPage() {
                   key={pm.id}
                   type="button"
                   onClick={() => handlePaginationModeChange(pm.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  className={`px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all flex items-center justify-center gap-1 sm:gap-1.5 min-w-0 ${
                     isActive
                       ? 'bg-white text-brand shadow-sm border border-[rgba(0,0,0,0.08)]'
                       : 'text-sand hover:text-cream'
@@ -597,7 +597,7 @@ export default function DishesPage() {
                   aria-pressed={isActive}
                 >
                   <Icon name={pm.icon} cls="w-3.5 h-3.5" />
-                  <span>{pm.label}</span>
+                  <span className="truncate">{pm.label}</span>
                 </button>
               );
             })}

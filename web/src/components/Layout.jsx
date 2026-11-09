@@ -15,6 +15,8 @@ export default function Layout() {
   const navigate = useNavigate();
   const pathname = location.pathname;
   const [isApiLoading, setIsApiLoading] = useState(false);
+  const [barVisible, setBarVisible] = useState(false);
+  const [barProgress, setBarProgress] = useState(0);
   const { user, logout } = useAuth();
 
   const desktopNavRef = useRef(null);
@@ -51,6 +53,54 @@ export default function Layout() {
     });
   }, []);
 
+  // Điều khiển thanh loading trên cùng chạy đều liên tục (không bao giờ đứng im ở bất kỳ thời điểm nào)
+  useEffect(() => {
+    let rafId;
+    let hideTimer;
+
+    if (isApiLoading) {
+      setBarVisible(true);
+      let current = 8;
+      setBarProgress(current);
+      let lastTime = performance.now();
+
+      const step = (now) => {
+        const dt = Math.min((now - lastTime) / 1000, 0.1);
+        lastTime = now;
+
+        let speed;
+        if (current < 35) {
+          speed = 42;
+        } else if (current < 65) {
+          speed = 20;
+        } else if (current < 85) {
+          speed = 8;
+        } else if (current < 96) {
+          speed = 2.5;
+        } else {
+          speed = 0.4;
+        }
+
+        current = Math.min(99.5, current + speed * dt);
+        setBarProgress(current);
+        rafId = requestAnimationFrame(step);
+      };
+
+      rafId = requestAnimationFrame(step);
+    } else if (barVisible) {
+      setBarProgress(100);
+      hideTimer = setTimeout(() => {
+        setBarVisible(false);
+        setBarProgress(0);
+      }, 220);
+    }
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, [isApiLoading, barVisible]);
+
   // Hiệu ứng trượt trang từ trái sang phải khi chuyển trang (giữ nguyên từ app.js cũ)
   useEffect(() => {
     document.body.setAttribute('data-page', activeTab || 'other');
@@ -73,7 +123,7 @@ export default function Layout() {
     return () => clearTimeout(timer);
   }, [pathname, activeTab]);
 
-  // Cập nhật thanh chỉ mục (nav-indicator) cố định tại tab đang active (không có hiệu ứng khi di chuột)
+  // Cập nhật thanh chỉ mục (nav-indicator) cố định tại tab đang active
   useEffect(() => {
     function setupNavIndicator(navEl) {
       if (!navEl) return () => {};
@@ -114,14 +164,26 @@ export default function Layout() {
 
   return (
     <>
-      {/* Global API Loading Bar (Đã loại bỏ floating badge 'Đang tải dữ liệu...') */}
-      {isApiLoading && (
-        <div className="spa-loading-bar" role="progressbar" aria-label="Đang tải dữ liệu từ máy chủ" />
+      {/* Global API Loading Bar chạy đều liên tục từ 8% -> 99.5% -> 100% */}
+      {barVisible && (
+        <div
+          className="spa-loading-bar"
+          role="progressbar"
+          aria-valuenow={Math.round(barProgress)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Đang tải dữ liệu từ máy chủ"
+        >
+          <div
+            className="spa-loading-fill"
+            style={{ width: `${barProgress.toFixed(2)}%` }}
+          />
+        </div>
       )}
 
       <header id="site-header" className="site-header">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex md:grid md:grid-cols-[1fr_auto_1fr] items-center justify-between gap-4 h-[60px] sm:h-[72px] md:h-20">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex md:grid md:grid-cols-[1fr_auto_1fr] items-center justify-between gap-2 sm:gap-4 h-[60px] sm:h-[72px] md:h-20">
             {/* Tabs (desktop) */}
             <nav
               ref={desktopNavRef}
@@ -143,8 +205,12 @@ export default function Layout() {
               ))}
             </nav>
 
-            {/* Logo (chỉ giữ lại chữ) */}
-            <Link to="/" className="brand md:justify-self-center" aria-label="CRISPY HOUSE - Trang chủ">
+            {/* Logo */}
+            <Link
+              to="/"
+              className="brand md:justify-self-center flex-shrink-0"
+              aria-label="CRISPY HOUSE - Trang chủ"
+            >
               <span className="brand-word">
                 <b>CRISPY</b>
                 <small>HOUSE</small>
@@ -152,17 +218,17 @@ export default function Layout() {
             </Link>
 
             {/* Actions & Auth Status */}
-            <div className="flex items-center gap-2.5 md:justify-self-end">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 md:justify-self-end min-w-0">
               {user ? (
                 <>
-                  <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-ink-850 border border-ink-700 text-xs">
+                  <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-ink-850 border border-ink-700 text-xs min-w-0">
                     <span
-                      className="font-semibold text-cream truncate max-w-[160px]"
+                      className="font-semibold text-cream truncate max-w-[92px] sm:max-w-[160px]"
                       title={user.rawEmail || user.email}
                     >
                       {user.rawEmail || user.email}
                     </span>
-                    <span className="px-1.5 py-0.5 rounded bg-ink-800 text-sand uppercase text-[10px] font-semibold">
+                    <span className="px-1.5 py-0.5 rounded bg-ink-800 text-sand uppercase text-[9.5px] sm:text-[10px] font-semibold flex-shrink-0">
                       {user.role}
                     </span>
                   </div>
@@ -170,20 +236,20 @@ export default function Layout() {
                     type="button"
                     id="header-logout-btn"
                     onClick={handleLogout}
-                    className="btn btn-ghost btn-sm text-xs px-3 py-1.5"
+                    className="btn btn-ghost btn-sm text-[11.5px] sm:text-xs px-2.5 sm:px-3 py-1.5 flex-shrink-0"
                   >
                     Đăng xuất
                   </button>
                 </>
-              ) : (
+              ) : !isAuthPath ? (
                 <Link
                   to="/login"
                   id="header-auth-link"
-                  className="btn btn-primary btn-sm text-xs px-4 py-2"
+                  className="btn btn-primary btn-sm text-[11.5px] sm:text-xs px-3 sm:px-4 py-1.5 sm:py-2 flex-shrink-0"
                 >
                   Đăng nhập / Đăng ký
                 </Link>
-              )}
+              ) : null}
             </div>
           </div>
 
@@ -210,20 +276,26 @@ export default function Layout() {
         </div>
       </header>
 
-      <main id="main" className="flex-1">
+      <main id="main" className="flex-1 min-w-0 max-w-full">
         <Outlet />
       </main>
 
       {/* Modern Luxury Minimalist Footer */}
-      <footer className="mt-auto border-t border-[rgba(0,0,0,0.06)] bg-[#f4f0eb] text-sand py-12 transition-colors">
+      <footer className="mt-auto border-t border-[rgba(0,0,0,0.06)] bg-[#f4f0eb] text-sand py-10 sm:py-12 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-[rgba(0,0,0,0.06)]">
             {/* Brand Info */}
             <div className="space-y-4 md:col-span-1">
-              <Link to="/" className="brand inline-flex items-center gap-2.5 text-cream" aria-label="CRISPY HOUSE - Trang chủ">
+              <Link
+                to="/"
+                className="brand inline-flex items-center gap-2.5 text-cream"
+                aria-label="CRISPY HOUSE - Trang chủ"
+              >
                 <span className="brand-word leading-none">
                   <b className="font-extrabold text-base tracking-wider">CRISPY</b>
-                  <small className="block text-[9px] font-semibold tracking-[0.35em] text-sand">HOUSE</small>
+                  <small className="block text-[9px] font-semibold tracking-[0.35em] text-sand">
+                    HOUSE
+                  </small>
                 </span>
               </Link>
               <p className="text-xs text-sand-dim leading-relaxed">
@@ -296,11 +368,16 @@ export default function Layout() {
           </div>
 
           {/* Bottom Bar */}
-          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-sand-dim">
-            <p>© 2026 CRISPY HOUSE. All rights reserved. Single-Page Application (React & REST API).</p>
-            <div className="flex items-center gap-6">
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-sand-dim text-center sm:text-left">
+            <p className="break-words">
+              © 2026 CRISPY HOUSE. All rights reserved. Single-Page Application (React & REST API).
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
               <span className="text-sand/50">Tông màu chủ đạo #C00707</span>
-              <Link to="/admin/dishes" className="text-sand hover:text-cream transition-colors flex items-center gap-1.5">
+              <Link
+                to="/admin/dishes"
+                className="text-sand hover:text-cream transition-colors flex items-center gap-1.5"
+              >
                 <Icon name="dish" cls="w-3.5 h-3.5" />
                 <span>Trang Quản lý</span>
               </Link>

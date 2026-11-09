@@ -31,7 +31,6 @@ function loadRecaptchaScript() {
       }
     }, 100);
 
-    // Timeout an toàn sau 15 giây nếu mạng chặn Google
     setTimeout(() => {
       clearInterval(checkInterval);
       resolve(window.grecaptcha || null);
@@ -43,15 +42,18 @@ function loadRecaptchaScript() {
 
 /**
  * Component hiển thị Google reCAPTCHA v2 trong SPA.
- * Tự động nạp script của Google, render widget vào div.g-recaptcha và hỗ trợ reset khi cần làm mới.
+ * Chỉ khởi tạo widget khi vùng chứa đang hiển thị (isVisible = true) để đảm bảo
+ * kích thước khung và vùng chạm (touch target) trên Mobile hoạt động chính xác 100%.
  */
 export default function RecaptchaWidget({
   siteKey = DEFAULT_SITE_KEY,
   onChange,
   resetSignal = 0,
+  isVisible = true,
 }) {
   const containerRef = useRef(null);
   const widgetIdRef = useRef(null);
+  const isRenderingRef = useRef(false);
   const onChangeRef = useRef(onChange);
 
   useEffect(() => {
@@ -59,17 +61,20 @@ export default function RecaptchaWidget({
   }, [onChange]);
 
   useEffect(() => {
-    let isMounted = true;
+    if (!isVisible) return undefined;
+    let isCancelled = false;
 
     loadRecaptchaScript().then((grecaptcha) => {
-      if (!isMounted || !grecaptcha || !containerRef.current) return;
-      if (widgetIdRef.current !== null) return;
+      if (isCancelled || !grecaptcha || !containerRef.current) return;
+      if (widgetIdRef.current !== null || isRenderingRef.current) return;
 
-      try {
-        grecaptcha.ready(() => {
-          if (!isMounted || !containerRef.current || widgetIdRef.current !== null) return;
-          // Làm sạch container trước khi render để tránh lỗi "reCAPTCHA has already been rendered in this element"
-          containerRef.current.innerHTML = '';
+      grecaptcha.ready(() => {
+        if (isCancelled || !containerRef.current) return;
+        if (widgetIdRef.current !== null || isRenderingRef.current) return;
+        if (containerRef.current.childElementCount > 0) return;
+
+        try {
+          isRenderingRef.current = true;
           widgetIdRef.current = grecaptcha.render(containerRef.current, {
             sitekey: siteKey,
             callback: (token) => {
@@ -82,16 +87,18 @@ export default function RecaptchaWidget({
               if (onChangeRef.current) onChangeRef.current('');
             },
           });
-        });
-      } catch (_) {
-        // Bỏ qua nếu widget đã được khởi tạo
-      }
+        } catch (_) {
+          // Bỏ qua nếu widget đã được render
+        } finally {
+          isRenderingRef.current = false;
+        }
+      });
     });
 
     return () => {
-      isMounted = false;
+      isCancelled = true;
     };
-  }, [siteKey]);
+  }, [siteKey, isVisible]);
 
   useEffect(() => {
     if (resetSignal > 0 && widgetIdRef.current !== null && window.grecaptcha) {
@@ -104,5 +111,12 @@ export default function RecaptchaWidget({
     }
   }, [resetSignal]);
 
-  return <div ref={containerRef} className="g-recaptcha" data-sitekey={siteKey} />;
+  return (
+    <div
+      ref={containerRef}
+      className="g-recaptcha"
+      data-sitekey={siteKey}
+      style={{ minHeight: '78px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+    />
+  );
 }

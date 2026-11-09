@@ -498,11 +498,11 @@ export default function AdminChefFormPage({ mode = 'create' }) {
                   </div>
 
                   {/* LIST 1 (TRÊN): Những món ăn đầu bếp đó nấu */}
-                  <div className="p-5 rounded-2xl border border-brand/25 bg-[#fff8f8] space-y-4">
-                    <div className="flex items-center justify-between border-b border-brand/15 pb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-brand" />
-                        <h4 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-cream">
+                  <div className="p-4 sm:p-5 rounded-2xl border border-brand/25 bg-[#fff8f8] space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-brand/15 pb-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full bg-brand flex-shrink-0" />
+                        <h4 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-cream break-words">
                           Danh sách món đầu bếp này nấu
                         </h4>
                       </div>
@@ -566,11 +566,11 @@ export default function AdminChefFormPage({ mode = 'create' }) {
                   </div>
 
                   {/* LIST 2 (DƯỚI): Những món ăn đầu bếp đó không nấu */}
-                  <div className="p-5 rounded-2xl border border-line bg-[#fbf9f6] space-y-4">
-                    <div className="flex items-center justify-between border-b border-line pb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-sand-dim" />
-                        <h4 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-sand">
+                  <div className="p-4 sm:p-5 rounded-2xl border border-line bg-[#fbf9f6] space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full bg-sand-dim flex-shrink-0" />
+                        <h4 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-sand break-words">
                           Danh sách món đầu bếp này không nấu
                         </h4>
                       </div>

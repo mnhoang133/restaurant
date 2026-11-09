@@ -337,6 +337,7 @@ export default function LoginPage({ initialTab = 'login' }) {
                     <RecaptchaWidget
                       onChange={setLoginCaptchaToken}
                       resetSignal={loginCaptchaReset}
+                      isVisible={activeTab === 'login' && requireLoginCaptcha}
                     />
                   </div>
                 )}
@@ -513,6 +514,7 @@ export default function LoginPage({ initialTab = 'login' }) {
                   <RecaptchaWidget
                     onChange={setRegCaptchaToken}
                     resetSignal={regCaptchaReset}
+                    isVisible={activeTab === 'register'}
                   />
                 </div>
 

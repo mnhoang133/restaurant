@@ -141,13 +141,13 @@ export default function AdminIngredientsListPage() {
 
           {status === 'ok' && (
             <div className="card overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="table">
+              <div className="w-full">
+                <table className="table w-full">
                   <thead>
                     <tr>
-                      <th className="w-16">STT</th>
+                      <th className="w-12 sm:w-16">STT</th>
                       <th>Tên nguyên liệu</th>
-                      <th className="text-right whitespace-nowrap">Thao tác</th>
+                      <th className="text-right whitespace-nowrap w-24">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -161,7 +161,7 @@ export default function AdminIngredientsListPage() {
                         .map((ing, idx) => (
                           <tr key={ing.id}>
                             <td className="font-mono text-xs text-sand-dim">{idx + 1}</td>
-                            <td className="font-bold text-cream">{ing.name}</td>
+                            <td className="font-bold text-cream break-words min-w-0">{ing.name}</td>
 
                           <td className="text-right whitespace-nowrap">
                             <div className="inline-flex items-center gap-1.5 flex-nowrap">
