@@ -292,7 +292,9 @@ class AuthService {
       this.getRateRecord(ipKey, POLICY.LOGIN_WINDOW_MS)
     ]);
 
-    const isLocked = Boolean(emailState.isLocked || ipState.isLocked);
+    // Chỉ khóa 429 theo từng Email cá nhân (tránh khóa nhầm các máy/tài khoản khác dùng chung IP Wi-Fi/NAT).
+    // Bộ đếm IP vẫn được lưu trong DB đúng theo Slide và chỉ dùng để bật CAPTCHA (phạt nhẹ) khi IP spam quá nhiều.
+    const isLocked = Boolean(emailState.isLocked);
     const requireCaptcha =
       emailState.attempts >= POLICY.LOGIN_CAPTCHA_THRESHOLD ||
       ipState.attempts >= POLICY.LOGIN_CAPTCHA_THRESHOLD_IP;
@@ -302,7 +304,7 @@ class AuthService {
       emailAttempts: emailState.attempts,
       ipAttempts: ipState.attempts,
       isLocked,
-      lockedUntil: emailState.lockedUntil || ipState.lockedUntil || null,
+      lockedUntil: emailState.lockedUntil || null,
       requireCaptcha
     };
   }
@@ -316,8 +318,8 @@ class AuthService {
       this.incrementRateRecord(
         ipKey,
         POLICY.LOGIN_WINDOW_MS,
-        POLICY.LOGIN_MAX_ATTEMPTS_IP,
-        POLICY.IP_LOCK_DURATION_MS
+        999999, // Không bao giờ khóa cứng 429 theo IP ở bước Login, chỉ đếm số lần vào DB
+        0
       )
     ];
 
@@ -337,9 +339,7 @@ class AuthService {
     const emailUpdated = results[1] || { attempts: 0, lockedUntil: null };
     const now = new Date();
 
-    const isLocked =
-      Boolean(emailUpdated.lockedUntil && emailUpdated.lockedUntil > now) ||
-      Boolean(ipUpdated.lockedUntil && ipUpdated.lockedUntil > now);
+    const isLocked = Boolean(emailUpdated.lockedUntil && emailUpdated.lockedUntil > now);
 
     return {
       emailAttempts: emailUpdated.attempts,
