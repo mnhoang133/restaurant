@@ -15,17 +15,19 @@ const POLICY = {
   OTP_MAX_SEND_COUNT: 5,                   // Tối đa 5 lần gửi OTP cho một tài khoản
 
   LOGIN_WINDOW_MS: 15 * 60 * 1000,         // Cửa sổ đếm đăng nhập sai: 15 phút
-  LOGIN_CAPTCHA_THRESHOLD: 3,              // Từ 3 lần sai yêu cầu CAPTCHA trước khi kiểm tra password
-  LOGIN_MAX_ATTEMPTS_EMAIL: 5,             // Đủ 5 lần sai theo email -> khóa tạm (HTTP 429 RATE_LIMITED)
-  LOGIN_MAX_ATTEMPTS_IP: 20,               // Đủ 20 lần sai theo IP -> khóa tạm (HTTP 429 RATE_LIMITED)
-  LOGIN_LOCK_DURATION_MS: 5 * 60 * 1000,   // Thời gian khóa tạm đăng nhập: 5 phút
+  LOGIN_CAPTCHA_THRESHOLD: 3,              // Từ 3 lần sai theo Email yêu cầu CAPTCHA
+  LOGIN_CAPTCHA_THRESHOLD_IP: 12,          // Theo IP dùng chung Wi-Fi/NAT: từ 12 lần sai mới ép CAPTCHA toàn IP
+  LOGIN_MAX_ATTEMPTS_EMAIL: 5,             // Đủ 5 lần sai theo Email -> khóa riêng Email đó 5 phút (429)
+  LOGIN_MAX_ATTEMPTS_IP: 50,               // Đủ 50 lần sai theo IP -> mới khóa toàn IP (tránh khóa nhầm máy cùng mạng)
+  LOGIN_LOCK_DURATION_MS: 5 * 60 * 1000,   // Thời gian khóa tạm theo Email: 5 phút
+  IP_LOCK_DURATION_MS: 2 * 60 * 1000,      // Thời gian khóa tạm theo IP: 2 phút
 
   REGISTER_WINDOW_MS: 15 * 60 * 1000,      // Cửa sổ giới hạn đăng ký theo IP: 15 phút
-  REGISTER_MAX_PER_IP: 20,                 // Tối đa 20 lần gửi đăng ký / 15 phút / IP
+  REGISTER_MAX_PER_IP: 50,                 // Tối đa 50 lần gửi đăng ký / 15 phút / IP
 
   FORGOT_WINDOW_MS: 15 * 60 * 1000,        // Cửa sổ giới hạn yêu cầu quên mật khẩu: 15 phút
-  FORGOT_MAX_PER_EMAIL: 3,                 // Tối đa 3 yêu cầu /forgot-password cho mỗi email trong 15 phút
-  FORGOT_MAX_PER_IP: 15,                   // Tối đa 15 yêu cầu /forgot-password cho mỗi IP trong 15 phút
+  FORGOT_MAX_PER_EMAIL: 3,                 // Tối đa 3 yêu cầu /forgot-password cho mỗi Email trong 15 phút
+  FORGOT_MAX_PER_IP: 50,                   // Tối đa 50 yêu cầu /forgot-password cho mỗi IP trong 15 phút
   RESET_TOKEN_EXPIRES_MS: 15 * 60 * 1000   // Hạn dùng Reset Token: 15 phút
 };
 
@@ -293,7 +295,7 @@ class AuthService {
     const isLocked = Boolean(emailState.isLocked || ipState.isLocked);
     const requireCaptcha =
       emailState.attempts >= POLICY.LOGIN_CAPTCHA_THRESHOLD ||
-      ipState.attempts >= POLICY.LOGIN_CAPTCHA_THRESHOLD;
+      ipState.attempts >= POLICY.LOGIN_CAPTCHA_THRESHOLD_IP;
 
     return {
       normalizedEmail,
@@ -315,7 +317,7 @@ class AuthService {
         ipKey,
         POLICY.LOGIN_WINDOW_MS,
         POLICY.LOGIN_MAX_ATTEMPTS_IP,
-        POLICY.LOGIN_LOCK_DURATION_MS
+        POLICY.IP_LOCK_DURATION_MS
       )
     ];
 
@@ -345,7 +347,7 @@ class AuthService {
       isLocked,
       requireCaptcha:
         emailUpdated.attempts >= POLICY.LOGIN_CAPTCHA_THRESHOLD ||
-        ipUpdated.attempts >= POLICY.LOGIN_CAPTCHA_THRESHOLD
+        ipUpdated.attempts >= POLICY.LOGIN_CAPTCHA_THRESHOLD_IP
     };
   }
 
