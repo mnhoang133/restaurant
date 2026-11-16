@@ -17,9 +17,12 @@ model Dish {
   category    String   // Khai vị, Món chính, Tráng miệng, Nước uống
   isAvailable Boolean  @default(true)
   isDeleted   Boolean  @default(false)
+  chefId      Int?     // ID đầu bếp phụ trách chính (ABAC - Bài 2 Block 9)
+  status      String   @default("draft") // draft | published (ABAC - Bài 2 Block 9)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  chef        Chef?    @relation("DishPrimaryChef", fields: [chefId], references: [id], onDelete: SetNull)
   images      DishImage[]
   chefs       DishChef[]
   ingredients DishIngredient[]
@@ -51,8 +54,10 @@ model Chef {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  images     ChefImage[]
-  dishes     DishChef[]
+  images        ChefImage[]
+  dishes        DishChef[]
+  primaryDishes Dish[]   @relation("DishPrimaryChef")
+  users         User[]
 
   @@map("chefs")
 }
@@ -111,24 +116,44 @@ model DishIngredient {
   @@map("dish_ingredients")
 }
 
-// 4. Người dùng (Dùng lại bảng users đã có trên DB + cột tokenVersion thu hồi JWT - Slide 41, 61, 64)
+// 4. Người dùng (Dùng lại bảng users đã có trên DB + mở rộng Bài 2 Block 9: chefId, mfaEnabled, mfaSecret, lastTotpStep)
 model User {
   id              Int       @id @default(autoincrement())
   email           String    @unique
   rawEmail        String?
   name            String?
   passwordHash    String
-  role            String    @default("viewer")
+  role            String    @default("viewer") // viewer | editor | admin
   status          String    @default("pending") // pending | active
   emailVerifiedAt DateTime?
   tokenVersion    Int       @default(0) // Tăng lên khi Reset Password / Logout để thu hồi JWT cũ
+  chefId          Int?      // ID đầu bếp mà tài khoản Editor phụ trách (null với viewer và admin)
+  mfaEnabled      Boolean   @default(false) // Chỉ bật true sau khi xác nhận đúng mã TOTP lần đầu
+  mfaSecret       String?   // Lưu dạng mã hóa đối xứng AES-256 (không băm 1 chiều, không lưu rõ)
+  lastTotpStep    Int?      // Bước thời gian TOTP đã chấp nhận gần nhất (chống Replay trong 30s)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  chef                Chef?                @relation(fields: [chefId], references: [id], onDelete: SetNull)
   activationChallenge ActivationChallenge?
   passwordResets      PasswordReset[]
+  recoveryCodes       RecoveryCode[]
 
   @@map("users")
+}
+
+// 4b. Mã dự phòng khôi phục MFA dùng 1 lần (RecoveryCode - Slide 54, 61)
+model RecoveryCode {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  codeHash  String    // Hash SHA-256 của mã dự phòng, không lưu mã gốc
+  usedAt    DateTime? // Thời điểm đã tiêu thụ (null là chưa dùng)
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("recovery_codes")
 }
 
 // 5. Thử thách OTP kích hoạt tài khoản (Dùng lại bảng activation_challenges)

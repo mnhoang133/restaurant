@@ -230,6 +230,19 @@ class AuthController {
         });
       }
 
+      if (result.code === 'MFA_REQUIRED') {
+        return res.status(200).json({
+          ok: true,
+          data: {
+            next: 'mfa',
+            challenge: result.challenge,
+            mfaToken: result.mfaToken || result.challenge,
+            email: result.email,
+            message: result.message
+          }
+        });
+      }
+
       if (result.code !== 'LOGIN_SUCCESS') {
         return res.status(200).json({
           ok: false,
@@ -244,7 +257,9 @@ class AuthController {
       return res.status(200).json({
         ok: true,
         data: {
+          next: 'done',
           accessToken: result.accessToken,
+          expiresIn: 900,
           user: result.user
         }
       });
@@ -388,6 +403,214 @@ class AuthController {
           code: result.code,
           message: result.message
         }
+      });
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  /**
+   * 10. POST /api/auth/mfa (hoặc /api/auth/mfa/verify) - Bước 2 Đăng nhập với mã TOTP hoặc Recovery Code (Slide 56)
+   */
+  async verifyMfa(req, res, next) {
+    try {
+      const body = req.body || {};
+      const challenge = body.challenge !== undefined ? body.challenge : body.mfaToken;
+      const code = body.code !== undefined ? body.code : body.otp !== undefined ? body.otp : body.token;
+
+      const result = await authService.verifyMfaLogin({ challenge, code });
+
+      if (result.status === 429) {
+        return res.status(429).json({
+          ok: false,
+          error: {
+            code: 'RATE_LIMITED',
+            message: result.message
+          }
+        });
+      }
+
+      if (result.code !== 'LOGIN_SUCCESS') {
+        return res.status(result.status || 200).json({
+          ok: false,
+          error: {
+            code: result.code || 'INVALID_MFA_CODE',
+            message: result.message
+          }
+        });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        data: {
+          accessToken: result.accessToken,
+          expiresIn: 900,
+          usedRecoveryCode: Boolean(result.usedRecoveryCode),
+          user: result.user
+        }
+      });
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  /**
+   * 11. POST /api/auth/mfa/setup - Bước 1 & 2 Thiết lập TOTP (Tạo secret & QR, mfaEnabled = false)
+   */
+  async setupMfa(req, res, next) {
+    try {
+      const result = await authService.setupMfa(req.user.id);
+
+      if (result.status === 401) {
+        return res.status(401).json({
+          ok: false,
+          error: {
+            code: 'UNAUTHENTICATED',
+            message: result.message
+          }
+        });
+      }
+
+      if (result.code !== 'MFA_SETUP_READY') {
+        return res.status(200).json({
+          ok: false,
+          error: {
+            code: result.code,
+            message: result.message
+          }
+        });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        data: result.data
+      });
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  /**
+   * 12. POST /api/auth/mfa/enable - Bước 3 & 4 Xác nhận mã 6 số lần đầu & Phát Recovery Code
+   */
+  async enableMfa(req, res, next) {
+    try {
+      const body = req.body || {};
+      const code = body.code !== undefined ? body.code : body.otp !== undefined ? body.otp : body.token;
+
+      const result = await authService.enableMfa(req.user.id, code);
+
+      if (result.status === 429) {
+        return res.status(429).json({
+          ok: false,
+          error: {
+            code: 'RATE_LIMITED',
+            message: result.message
+          }
+        });
+      }
+
+      if (result.code !== 'MFA_ENABLED') {
+        return res.status(result.status || 200).json({
+          ok: false,
+          error: {
+            code: result.code || 'INVALID_MFA_CODE',
+            message: result.message
+          }
+        });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        data: result.data
+      });
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  /**
+   * 13. POST /api/auth/mfa/disable - Tắt MFA (Yêu cầu xác thực lại Password + Mã TOTP/Recovery)
+   */
+  async disableMfa(req, res, next) {
+    try {
+      const body = req.body || {};
+      const password = body.password;
+      const code = body.code !== undefined ? body.code : body.otp !== undefined ? body.otp : body.token;
+
+      const result = await authService.disableMfa({
+        userId: req.user.id,
+        password,
+        code
+      });
+
+      if (result.status === 429) {
+        return res.status(429).json({
+          ok: false,
+          error: {
+            code: 'RATE_LIMITED',
+            message: result.message
+          }
+        });
+      }
+
+      if (result.code !== 'MFA_DISABLED') {
+        return res.status(result.status || 200).json({
+          ok: false,
+          error: {
+            code: result.code,
+            message: result.message
+          }
+        });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        data: result.data
+      });
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  /**
+   * 14. POST /api/auth/mfa/recovery-codes - Sinh lại nhóm Recovery Code mới (Nhóm cũ vô hiệu)
+   */
+  async regenerateRecoveryCodes(req, res, next) {
+    try {
+      const body = req.body || {};
+      const password = body.password;
+      const code = body.code !== undefined ? body.code : body.otp !== undefined ? body.otp : body.token;
+
+      const result = await authService.regenerateRecoveryCodes({
+        userId: req.user.id,
+        password,
+        code
+      });
+
+      if (result.status === 429) {
+        return res.status(429).json({
+          ok: false,
+          error: {
+            code: 'RATE_LIMITED',
+            message: result.message
+          }
+        });
+      }
+
+      if (result.code !== 'RECOVERY_CODES_REGENERATED') {
+        return res.status(result.status || 200).json({
+          ok: false,
+          error: {
+            code: result.code,
+            message: result.message
+          }
+        });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        data: result.data
       });
     } catch (err) {
       return next(err);

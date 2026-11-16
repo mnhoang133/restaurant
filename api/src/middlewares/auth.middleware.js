@@ -44,6 +44,46 @@ async function requireAuth(req, res, next) {
   }
 }
 
+/**
+ * Middleware Gate 2 (RBAC): Kiểm tra quyền theo Role của User đã đọc từ Database (Slide 37, 38, 43, 62)
+ * - Viewer: chỉ đọc (chặn mọi thao tác ghi với 403 FORBIDDEN)
+ * - Editor: đọc, thêm, sửa (chặn xóa với 403 FORBIDDEN)
+ * - Admin: đọc, thêm, sửa, xóa
+ */
+function requireRole(...allowedRoles) {
+  const normalizedAllowed = allowedRoles.map((r) => String(r).toLowerCase().trim());
+
+  return (req, res, next) => {
+    if (req.method === 'OPTIONS') {
+      return next();
+    }
+
+    if (!req.user || !req.user.role) {
+      return res.status(401).json({
+        ok: false,
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Vui lòng đăng nhập để thực hiện thao tác này.'
+        }
+      });
+    }
+
+    const userRole = String(req.user.role).toLowerCase().trim();
+    if (!normalizedAllowed.includes(userRole)) {
+      return res.status(403).json({
+        ok: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: `Tài khoản có vai trò '${req.user.role}' không đủ quyền thực hiện thao tác này.`
+        }
+      });
+    }
+
+    return next();
+  };
+}
+
 module.exports = {
-  requireAuth
+  requireAuth,
+  requireRole
 };

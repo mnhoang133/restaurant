@@ -29,6 +29,9 @@ class DishService {
     return await prisma.dish.findMany({
       where: whereClause,
       include: {
+        chef: {
+          select: { id: true, code: true, name: true, field: true },
+        },
         images: {
           orderBy: { orderIndex: 'asc' },
         },
@@ -101,7 +104,7 @@ class DishService {
         AND ($5::int IS NULL OR d.price >= $5)
         AND ($6::int IS NULL OR d.price <= $6)
         AND ($7::boolean IS NULL OR d."isAvailable" = $7)
-        AND ($8::int IS NULL OR EXISTS (
+        AND ($8::int IS NULL OR d."chefId" = $8 OR EXISTS (
           SELECT 1 FROM dish_chefs dc 
           JOIN chefs c ON c.id = dc."chefId" 
           WHERE dc."dishId" = d.id AND dc."chefId" = $8 AND c."isDeleted" = false
@@ -156,7 +159,13 @@ class DishService {
     // 3. Truy vấn danh sách món ăn đầy đủ kèm images trong 1 câu SQL duy nhất bằng json_agg
     // Tối ưu hóa triệt để: loại bỏ over-fetching chefs & ingredients để tăng tốc tối đa
     const itemsSql = `
-      SELECT d.id, d.code, d.name, d.description, d.price, d.category, d."isAvailable", d."createdAt", d."updatedAt",
+      SELECT d.id, d.code, d.name, d.description, d.price, d.category, d."isAvailable",
+             d."chefId", d.status, d."createdAt", d."updatedAt",
+             (
+               SELECT json_build_object('id', c.id, 'code', c.code, 'name', c.name, 'field', c.field)
+               FROM chefs c
+               WHERE c.id = d."chefId" AND c."isDeleted" = false
+             ) as chef,
              COALESCE(
                (
                  SELECT json_agg(json_build_object('id', di.id, 'imageUrl', di."imageUrl", 'orderIndex', di."orderIndex"))
@@ -227,6 +236,9 @@ class DishService {
         ...(includeDeleted ? {} : { isDeleted: false }),
       },
       include: {
+        chef: {
+          select: { id: true, code: true, name: true, field: true },
+        },
         images: {
           orderBy: { orderIndex: 'asc' },
         },
@@ -266,11 +278,13 @@ class DishService {
       price,
       category,
       isAvailable,
+      chefId = null,
+      status = 'draft',
       chefIds = [],
       ingredientIds = [],
     } = data;
 
-    // 1. Tạo bản ghi Dish
+    // 1. Tạo bản ghi Dish (gồm cả chefId và status cho ABAC)
     const dish = await prisma.dish.create({
       data: {
         code: code.trim(),
@@ -279,6 +293,8 @@ class DishService {
         price: parseInt(price, 10),
         category: category.trim(),
         isAvailable: isAvailable === true || isAvailable === 'true' || isAvailable === 'on',
+        chefId: chefId ? parseInt(chefId, 10) : null,
+        status: status === 'published' ? 'published' : 'draft',
       },
     });
 
@@ -296,11 +312,16 @@ class DishService {
       }
     }
 
-    // 3. Liên kết N - N với Đầu bếp
-    if (chefIds && chefIds.length > 0) {
-      const chefLinks = chefIds.map((cId) => ({
+    // 3. Liên kết N - N với Đầu bếp (Đảm bảo chefId phụ trách chính cũng nằm trong dish_chefs)
+    const mergedChefIds = [...new Set([
+      ...(chefIds || []).map((cId) => parseInt(cId, 10)),
+      ...(chefId ? [parseInt(chefId, 10)] : []),
+    ])].filter((n) => !isNaN(n) && n > 0);
+
+    if (mergedChefIds.length > 0) {
+      const chefLinks = mergedChefIds.map((cId) => ({
         dishId: dish.id,
-        chefId: parseInt(cId, 10),
+        chefId: cId,
       }));
       await prisma.dishChef.createMany({
         data: chefLinks,
@@ -338,6 +359,8 @@ class DishService {
       price,
       category,
       isAvailable,
+      chefId = undefined,
+      status = undefined,
       chefIds = null,
       ingredientIds = null,
       deleteImageIds = null,
@@ -351,6 +374,12 @@ class DishService {
     if (category) updatePayload.category = category.trim();
     if (isAvailable !== undefined) {
       updatePayload.isAvailable = isAvailable === true || isAvailable === 'true' || isAvailable === 'on';
+    }
+    if (chefId !== undefined) {
+      updatePayload.chefId = chefId ? parseInt(chefId, 10) : null;
+    }
+    if (status !== undefined && ['draft', 'published'].includes(status)) {
+      updatePayload.status = status;
     }
 
     await prisma.dish.update({

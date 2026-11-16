@@ -270,10 +270,14 @@ class DishController {
 
   /**
    * POST /api/dishes - Thêm món ăn mới
+   * - Cổng 1 (requireAuth) + Cổng 2 (requireRole: editor, admin) đã chạy ở route
+   * - Chống Mass Assignment (Slide 25, 45, 63):
+   *   + Món do Editor tạo: tự động nhận chefId = req.user.chefId và status = 'draft' (bỏ qua body)
+   *   + Chỉ Admin mới được đặt status và chefId tùy ý
    */
   async create(req, res, next) {
     try {
-      const { code, name, price, category, description, available, isAvailable, chefIds, ingredientIds } = req.body;
+      const { code, name, price, category, description, available, isAvailable, chefId, status, chefIds, ingredientIds } = req.body;
 
       const fields = {};
       if (!name || !name.trim()) fields.name = 'Tên món ăn là bắt buộc.';
@@ -301,6 +305,41 @@ class DishController {
 
       const parsedChefIds = parseIdArray(chefIds) || [];
       const parsedIngredientIds = parseIdArray(ingredientIds) || [];
+
+      const userRole = String((req.user && req.user.role) || 'viewer').toLowerCase();
+      let assignedChefId = null;
+      let assignedStatus = 'draft';
+
+      if (userRole === 'admin') {
+        if (chefId !== undefined && chefId !== null && String(chefId).trim() !== '') {
+          const parsedCid = parseInt(String(chefId).trim(), 10);
+          if (isNaN(parsedCid) || parsedCid <= 0) {
+            return sendValidationFailed(res, { chefId: 'ID đầu bếp phụ trách không hợp lệ.' });
+          }
+          const primaryChef = await prisma.chef.findFirst({
+            where: { id: parsedCid, isDeleted: false },
+            select: { id: true },
+          });
+          if (!primaryChef) {
+            return sendRelatedNotFound(
+              res,
+              { chefId: `ID đầu bếp phụ trách không tồn tại hoặc đã bị xóa: ${parsedCid}` },
+              'ID đầu bếp phụ trách không tồn tại hoặc đã bị xóa.'
+            );
+          }
+          assignedChefId = parsedCid;
+        } else if (parsedChefIds.length > 0) {
+          assignedChefId = parsedChefIds[0];
+        }
+
+        if (status && String(status).toLowerCase().trim() === 'published') {
+          assignedStatus = 'published';
+        }
+      } else {
+        // Editor: ép cứng chefId từ tài khoản và status = 'draft' (bỏ qua mọi giá trị trong body)
+        assignedChefId = req.user && req.user.chefId ? Number(req.user.chefId) : null;
+        assignedStatus = 'draft';
+      }
 
       if (parsedChefIds.length > 0) {
         const validChefs = await prisma.chef.findMany({
@@ -350,6 +389,8 @@ class DishController {
           category: category.trim(),
           description: description ? description.trim() : null,
           isAvailable: activeStatus,
+          chefId: assignedChefId,
+          status: assignedStatus,
           chefIds: parsedChefIds,
           ingredientIds: parsedIngredientIds,
         },
@@ -364,15 +405,56 @@ class DishController {
 
   /**
    * PATCH /api/dishes/:id - Cập nhật món ăn
+   * Đi qua đủ 4 cổng (Slide 42, 43, 44, 62, 63):
+   * - Cổng 1: Đã xác thực (requireAuth)
+   * - Cổng 2: Role có quyền dish:update (requireRole('editor', 'admin'))
+   * - Cổng 3: Bản ghi món ăn tồn tại trong DB
+   * - Cổng 4 (ABAC): Admin được phép; hoặc Editor có chefId trùng dish.chefId VÀ dish.status === 'draft'
    */
   async update(req, res, next) {
     try {
+      // CỔNG 3: Đọc lại bản ghi món ăn trực tiếp từ Database
       const existing = await dishService.findById(req.parsedId);
       if (!existing) {
         return sendNotFound(res, `Không tìm thấy món ăn với ID ${req.parsedId} để cập nhật.`);
       }
 
-      const { code, name, price, category, description, available, isAvailable, chefIds, ingredientIds, deleteImageIds } = req.body;
+      const userRole = String((req.user && req.user.role) || 'viewer').toLowerCase();
+
+      // CỔNG 4 (ABAC): Kiểm tra thuộc tính chủ sở hữu (chefId) và trạng thái (status) của bản ghi đọc từ DB
+      if (userRole !== 'admin') {
+        const userChefId = req.user && req.user.chefId ? Number(req.user.chefId) : null;
+        const dishChefId = existing.chefId ? Number(existing.chefId) : null;
+        const isOwner = userChefId !== null && dishChefId !== null && userChefId === dishChefId;
+        const isDraft = existing.status === 'draft';
+
+        if (!isOwner || !isDraft) {
+          return res.status(403).json({
+            ok: false,
+            error: {
+              code: 'FORBIDDEN',
+              message: !isOwner
+                ? 'Bạn không có quyền chỉnh sửa món ăn của đầu bếp khác.'
+                : 'Món ăn đã xuất bản (published), Biên tập viên (Editor) chỉ được phép sửa món ở trạng thái nháp (draft).',
+            },
+          });
+        }
+      }
+
+      const {
+        code,
+        name,
+        price,
+        category,
+        description,
+        available,
+        isAvailable,
+        chefId,
+        status,
+        chefIds,
+        ingredientIds,
+        deleteImageIds,
+      } = req.body;
 
       const fields = {};
       if (name !== undefined && !name.trim()) fields.name = 'Tên món ăn không được để trống.';
@@ -398,7 +480,43 @@ class DishController {
         }
       }
 
-      const parsedChefIds = chefIds !== undefined ? parseIdArray(chefIds) : null;
+      // Chỉ Admin mới được phép thay đổi chefId và status (Slide 63)
+      let updatedChefId = undefined;
+      let updatedStatus = undefined;
+
+      if (userRole === 'admin') {
+        if (chefId !== undefined && chefId !== null && String(chefId).trim() !== '') {
+          const parsedCid = parseInt(String(chefId).trim(), 10);
+          if (isNaN(parsedCid) || parsedCid <= 0) {
+            return sendValidationFailed(res, { chefId: 'ID đầu bếp phụ trách không hợp lệ.' });
+          }
+          const primaryChef = await prisma.chef.findFirst({
+            where: { id: parsedCid, isDeleted: false },
+            select: { id: true },
+          });
+          if (!primaryChef) {
+            return sendRelatedNotFound(
+              res,
+              { chefId: `ID đầu bếp phụ trách không tồn tại hoặc đã bị xóa: ${parsedCid}` },
+              'ID đầu bếp phụ trách cập nhật không tồn tại hoặc đã bị xóa.'
+            );
+          }
+          updatedChefId = parsedCid;
+        }
+
+        if (status !== undefined && String(status).trim() !== '') {
+          const cleanStatus = String(status).toLowerCase().trim();
+          if (cleanStatus === 'draft' || cleanStatus === 'published') {
+            updatedStatus = cleanStatus;
+          } else {
+            return sendValidationFailed(res, { status: 'Trạng thái món ăn phải là draft hoặc published.' });
+          }
+        }
+      }
+
+      // Với Editor: không cho phép đổi danh sách đầu bếp sang đầu bếp khác ngoài mình
+      const parsedChefIds =
+        userRole === 'admin' && chefIds !== undefined ? parseIdArray(chefIds) : null;
 
       if (parsedChefIds && parsedChefIds.length > 0) {
         const validChefs = await prisma.chef.findMany({
@@ -452,6 +570,8 @@ class DishController {
           category: category ? category.trim() : undefined,
           description: description !== undefined ? description.trim() : undefined,
           isAvailable: activeStatus,
+          chefId: updatedChefId,
+          status: updatedStatus,
           chefIds: parsedChefIds,
           ingredientIds: parsedIngredientIds,
           deleteImageIds: parsedDeleteImageIds,
@@ -466,7 +586,7 @@ class DishController {
   }
 
   /**
-   * DELETE /api/dishes/:id - Xóa món ăn
+   * DELETE /api/dishes/:id - Xóa món ăn (Chỉ Admin được phép qua Cổng 2)
    */
   async delete(req, res, next) {
     try {
@@ -487,6 +607,26 @@ class DishController {
    */
   async deleteImage(req, res, next) {
     try {
+      const existing = await dishService.findById(req.parsedId);
+      if (!existing) {
+        return sendNotFound(res, `Không tìm thấy món ăn với ID ${req.parsedId}.`);
+      }
+
+      const userRole = String((req.user && req.user.role) || 'viewer').toLowerCase();
+      if (userRole !== 'admin') {
+        const userChefId = req.user && req.user.chefId ? Number(req.user.chefId) : null;
+        const dishChefId = existing.chefId ? Number(existing.chefId) : null;
+        if (!userChefId || userChefId !== dishChefId || existing.status !== 'draft') {
+          return res.status(403).json({
+            ok: false,
+            error: {
+              code: 'FORBIDDEN',
+              message: 'Bạn không có quyền xóa ảnh của món ăn này.',
+            },
+          });
+        }
+      }
+
       const imageId = parseInt(req.params.imageId, 10);
       if (isNaN(imageId) || imageId <= 0) {
         return sendNotFound(res, 'Hình ảnh không tồn tại.');
