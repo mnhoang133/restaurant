@@ -95,11 +95,11 @@ export default function AdminMfaPage() {
       setSetupData(null);
       setConfirmCode('');
       updateUser({ mfaEnabled: true });
-      refreshUser();
       setBannerSuccess(
         res.data.message ||
           'Đã kích hoạt xác thực 2 lớp (MFA) thành công! Hãy lưu lại danh sách mã dự phòng bên dưới.'
       );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -177,7 +177,6 @@ export default function AdminMfaPage() {
       setOneTimeRecoveryCodes([]);
       setSetupData(null);
       updateUser({ mfaEnabled: false });
-      refreshUser();
       setBannerSuccess(
         res.data?.message || 'Đã tắt xác thực 2 lớp (MFA) thành công.'
       );

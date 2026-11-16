@@ -24,7 +24,12 @@ export function AuthProvider({ children }) {
       return null;
     }
 
-    setIsLoadingAuth(true);
+    setUser((prev) => {
+      if (!prev) {
+        setIsLoadingAuth(true);
+      }
+      return prev;
+    });
     const res = await apiClient.auth.me(signal);
     if (res.isAborted) return null;
 
