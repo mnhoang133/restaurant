@@ -184,7 +184,9 @@ class DishService {
       LIMIT $10 OFFSET $11
     `;
 
-    const itemsPromise = prisma.$queryRawUnsafe(
+    // Thực hiện tuần tự đếm và lấy món để không làm nghẽn Connection Pool của Supabase Session Pooler
+    const countResult = await countPromise;
+    const items = await prisma.$queryRawUnsafe(
       itemsSql,
       q,
       mode,
@@ -198,9 +200,6 @@ class DishService {
       pageSize,
       offset
     );
-
-    // Thực hiện song song đếm và lấy món tại PostgreSQL
-    const [countResult, items] = await Promise.all([countPromise, itemsPromise]);
     const total = countResult && countResult[0] ? countResult[0].total : 0;
     const totalPages = total > 0 ? Math.ceil(total / pageSize) : 0;
 
@@ -535,7 +534,7 @@ class DishService {
   }
 
   /**
-   * Danh mục kèm số lượng món và ảnh đại diện (dùng cho thanh phân loại cuộn ngang)
+   * Danh mục kèm số lượng món (1 câu truy vấn duy nhất, tránh bão kết nối N+1 tới Supabase Pooler)
    */
   async getCategories({ isAvailable = undefined } = {}) {
     const where = this._buildWhere({ isAvailable });
@@ -546,20 +545,10 @@ class DishService {
       orderBy: { category: 'asc' },
     });
 
-    const covers = await Promise.all(
-      groups.map((g) =>
-        prisma.dishImage.findFirst({
-          where: { dish: { ...where, category: g.category } },
-          orderBy: [{ dishId: 'desc' }, { orderIndex: 'asc' }],
-          select: { imageUrl: true },
-        })
-      )
-    );
-
-    return groups.map((g, i) => ({
+    return groups.map((g) => ({
       name: g.category,
       count: g._count._all,
-      cover: covers[i] ? covers[i].imageUrl : null,
+      cover: null,
     }));
   }
 
