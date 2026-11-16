@@ -480,7 +480,58 @@ class DishController {
         }
       }
 
-      // Chỉ Admin mới được phép thay đổi chefId và status (Slide 63)
+      // Chỉ Admin mới được phép thay đổi chefId và status (Slide 52, 63)
+      // Nếu Editor cố tình gửi status, chefId hoặc thay đổi danh sách chefIds -> Trả 403 FORBIDDEN (Thiếu quyền)
+      if (userRole !== 'admin') {
+        if (status !== undefined && status !== null && String(status).trim() !== '') {
+          return res.status(403).json({
+            ok: false,
+            error: {
+              code: 'FORBIDDEN',
+              message:
+                'Bạn không đủ quyền thay đổi trạng thái xuất bản (status) của món ăn. Chỉ Admin mới có quyền này.',
+            },
+          });
+        }
+
+        if (chefId !== undefined && chefId !== null && String(chefId).trim() !== '') {
+          return res.status(403).json({
+            ok: false,
+            error: {
+              code: 'FORBIDDEN',
+              message:
+                'Bạn không đủ quyền thay đổi đầu bếp phụ trách (chefId) của món ăn. Chỉ Admin mới có quyền này.',
+            },
+          });
+        }
+
+        if (chefIds !== undefined) {
+          const requestedChefIds = (parseIdArray(chefIds) || [])
+            .map((id) => Number(id))
+            .filter((id) => !isNaN(id))
+            .sort((a, b) => a - b);
+          const currentChefIds = (
+            Array.isArray(existing.chefs) ? existing.chefs.map((c) => Number(c.chefId)) : []
+          )
+            .filter((id) => !isNaN(id))
+            .sort((a, b) => a - b);
+          const isSameChefs =
+            requestedChefIds.length === currentChefIds.length &&
+            requestedChefIds.every((val, idx) => val === currentChefIds[idx]);
+
+          if (!isSameChefs) {
+            return res.status(403).json({
+              ok: false,
+              error: {
+                code: 'FORBIDDEN',
+                message:
+                  'Bạn không đủ quyền thay đổi đầu bếp phụ trách của món ăn. Chỉ Admin mới có quyền này.',
+              },
+            });
+          }
+        }
+      }
+
       let updatedChefId = undefined;
       let updatedStatus = undefined;
 

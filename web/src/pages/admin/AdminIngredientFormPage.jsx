@@ -26,7 +26,7 @@ export default function AdminIngredientFormPage({ mode = 'create' }) {
     async (signal) => {
       if (user && (isEdit ? !canUpdateEntity(user) : !canCreate(user))) {
         setPageError(
-          `Tài khoản ${user.role} không có quyền ${isEdit ? 'chỉnh sửa' : 'thêm mới'} nguyên liệu (403 FORBIDDEN).`
+          `Tài khoản ${user.role} không có quyền ${isEdit ? 'chỉnh sửa' : 'thêm mới'} nguyên liệu.`
         );
         setStatus('forbidden');
         return;
@@ -147,7 +147,7 @@ export default function AdminIngredientFormPage({ mode = 'create' }) {
 
           {status === 'forbidden' && (
             <ForbiddenView
-              title="Không Đủ Quyền Truy Cập (403)"
+              title="Không Đủ Quyền Truy Cập"
               message={pageError}
               backTo="/admin/ingredients"
               backLabel="Quay Lại Danh Sách Nguyên Liệu"

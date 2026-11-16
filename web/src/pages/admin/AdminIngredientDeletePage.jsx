@@ -41,7 +41,7 @@ export default function AdminIngredientDeletePage() {
       document.title = `Xác nhận xóa: ${result.data.name} · CRISPY HOUSE`;
       if (user && !canDelete(user)) {
         setErrorMsg(
-          `Tài khoản ${user.role} không có quyền xóa nguyên liệu (Chỉ Admin mới được phép xóa - 403 FORBIDDEN).`
+          `Tài khoản ${user.role} không có quyền xóa nguyên liệu (Chỉ Admin mới được phép xóa).`
         );
         setStatus('forbidden');
         return;
@@ -99,7 +99,7 @@ export default function AdminIngredientDeletePage() {
 
           {status === 'forbidden' && (
             <ForbiddenView
-              title="Không Đủ Quyền Xóa Nguyên Liệu (403)"
+              title="Không Đủ Quyền Xóa Nguyên Liệu"
               message={errorMsg}
               backTo="/admin/ingredients"
               backLabel="Quay Lại Danh Sách Nguyên Liệu"

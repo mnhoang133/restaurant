@@ -54,7 +54,7 @@ export default function AdminChefFormPage({ mode = 'create' }) {
 
       if (user && (isEdit ? !canUpdateEntity(user) : !canCreate(user))) {
         setPageError(
-          `Tài khoản ${user.role} không có quyền ${isEdit ? 'chỉnh sửa' : 'thêm mới'} đầu bếp (403 FORBIDDEN).`
+          `Tài khoản ${user.role} không có quyền ${isEdit ? 'chỉnh sửa' : 'thêm mới'} đầu bếp.`
         );
         setStatus('forbidden');
         return;
@@ -306,7 +306,7 @@ export default function AdminChefFormPage({ mode = 'create' }) {
 
           {status === 'forbidden' && (
             <ForbiddenView
-              title="Không Đủ Quyền Truy Cập (403)"
+              title="Không Đủ Quyền Truy Cập"
               message={pageError}
               backTo="/admin/chefs"
               backLabel="Quay Lại Danh Sách Đầu Bếp"

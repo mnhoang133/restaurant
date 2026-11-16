@@ -98,15 +98,17 @@ export function NotFoundView({
   backTo = '/dishes',
   backLabel = 'Quay Lại Thực Đơn',
 }) {
+  const cleanTitle = String(title || 'Không Tìm Thấy').replace(/\s*\(\d+\)\s*$/, '');
+
   return (
     <div className="max-w-lg mx-auto py-12 sm:py-16 px-4 text-center space-y-6">
-      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-brand/10 border border-brand/20 text-brand mx-auto grid place-items-center font-mono font-black text-3xl sm:text-4xl shadow-xl shadow-brand/20">
-        404
+      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-brand/10 border border-brand/20 text-brand mx-auto grid place-items-center shadow-xl shadow-brand/20">
+        <Icon name="search" cls="w-10 h-10" />
       </div>
 
       <div className="space-y-2">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-cream tracking-tight break-words">
-          {title}
+          {cleanTitle}
         </h1>
         <p className="text-sand text-xs sm:text-sm leading-relaxed max-w-sm mx-auto break-words">
           {message}
@@ -127,27 +129,29 @@ export function NotFoundView({
 }
 
 /**
- * Hiển thị trạng thái Không đủ quyền (403 FORBIDDEN từ RBAC hoặc ABAC).
- * Giữ nguyên phiên đăng nhập, không xóa token.
+ * Hiển thị trạng thái Không đủ quyền (từ RBAC hoặc ABAC).
+ * Giữ nguyên phiên đăng nhập, không xóa token, không hiện mã lỗi số cho người dùng.
  */
 export function ForbiddenView({
-  title = 'Không Đủ Quyền Truy Cập (403)',
-  message = 'Tài khoản của bạn không có quyền thực hiện thao tác này hoặc bản ghi không thỏa điều kiện phân quyền (RBAC / ABAC).',
+  title = 'Không Đủ Quyền Truy Cập',
+  message = 'Tài khoản của bạn không có quyền thực hiện thao tác này hoặc bản ghi không thỏa điều kiện phân quyền.',
   backTo = '/admin/dishes',
   backLabel = 'Quay Lại Quản Lý',
 }) {
+  const cleanTitle = String(title || 'Không Đủ Quyền Truy Cập').replace(/\s*\(\d+\)\s*$/, '');
+
   return (
     <div
       className="max-w-lg mx-auto py-12 sm:py-16 px-4 text-center space-y-6"
       data-error-code="FORBIDDEN"
     >
-      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-brand/10 border border-brand/20 text-brand mx-auto grid place-items-center font-mono font-black text-3xl sm:text-4xl shadow-xl shadow-brand/20">
-        403
+      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-brand/10 border border-brand/20 text-brand mx-auto grid place-items-center shadow-xl shadow-brand/20">
+        <Icon name="lock" cls="w-10 h-10" />
       </div>
 
       <div className="space-y-2">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-cream tracking-tight break-words">
-          {title}
+          {cleanTitle}
         </h1>
         <p className="text-sand text-xs sm:text-sm leading-relaxed max-w-md mx-auto break-words">
           {message}
@@ -177,6 +181,8 @@ export function ErrorView({
   backTo = '/dishes',
   backLabel = 'Quay Lại',
 }) {
+  const cleanTitle = String(title || 'Không Thể Tải Dữ Liệu').replace(/\s*\(\d+\)\s*$/, '');
+
   return (
     <div className="max-w-lg mx-auto py-12 sm:py-16 px-4 text-center space-y-6">
       <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-brand/10 border border-brand/20 text-brand mx-auto grid place-items-center font-mono font-black text-3xl shadow-xl shadow-brand/20">
@@ -185,7 +191,7 @@ export function ErrorView({
 
       <div className="space-y-2">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-cream tracking-tight break-words">
-          {title}
+          {cleanTitle}
         </h1>
         <p className="text-sand text-xs sm:text-sm leading-relaxed max-w-md mx-auto break-words">
           {message}

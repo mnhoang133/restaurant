@@ -41,7 +41,7 @@ export default function AdminChefDeletePage() {
       document.title = `Xác nhận xóa: ${result.data.name} · CRISPY HOUSE`;
       if (user && !canDelete(user)) {
         setErrorMsg(
-          `Tài khoản ${user.role} không có quyền xóa đầu bếp (Chỉ Admin mới được phép xóa - 403 FORBIDDEN).`
+          `Tài khoản ${user.role} không có quyền xóa đầu bếp (Chỉ Admin mới được phép xóa).`
         );
         setStatus('forbidden');
         return;
@@ -99,7 +99,7 @@ export default function AdminChefDeletePage() {
 
           {status === 'forbidden' && (
             <ForbiddenView
-              title="Không Đủ Quyền Xóa Đầu Bếp (403)"
+              title="Không Đủ Quyền Xóa Đầu Bếp"
               message={errorMsg}
               backTo="/admin/chefs"
               backLabel="Quay Lại Danh Sách Đầu Bếp"

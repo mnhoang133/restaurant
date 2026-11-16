@@ -41,7 +41,7 @@ export default function AdminDishDeletePage() {
       document.title = `Xác nhận xóa: ${result.data.name} · CRISPY HOUSE`;
       if (user && !canDelete(user)) {
         setErrorMsg(
-          `Tài khoản ${user.role} không có quyền xóa món ăn (Chỉ Admin mới được phép xóa - 403 FORBIDDEN).`
+          `Tài khoản ${user.role} không có quyền xóa món ăn (Chỉ Admin mới được phép xóa).`
         );
         setStatus('forbidden');
         return;
@@ -99,7 +99,7 @@ export default function AdminDishDeletePage() {
 
           {status === 'forbidden' && (
             <ForbiddenView
-              title="Không Đủ Quyền Xóa Món Ăn (403)"
+              title="Không Đủ Quyền Xóa Món Ăn"
               message={errorMsg}
               backTo="/admin/dishes"
               backLabel="Quay Lại Danh Sách Món Ăn"

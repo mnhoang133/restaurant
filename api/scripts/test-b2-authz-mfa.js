@@ -154,17 +154,34 @@ async function runTests() {
     assert.strictEqual(a6WrongOwner.json.error.code, 'FORBIDDEN');
     console.log('✔ [A6 - Cổng 4 ABAC] Editor 2 sửa món draft của Editor 1 -> 403 FORBIDDEN');
 
-    // Kịch bản A7 (Cổng 4 ABAC - Đúng chủ + còn draft): Editor 1 sửa món của mình (cố gửi kèm status="published") -> Cho phép nhưng giữ draft
+    // Kịch bản A7 (Cổng 4 ABAC - Đúng chủ + còn draft):
+    // - A7a: Editor 1 sửa tên/giá món draft của mình -> 200 OK
+    // - A7b: Editor 1 cố sửa status của món mình sở hữu -> 403 FORBIDDEN (Thiếu quyền)
+    // - A7c: Editor 1 cố đổi chefId của món mình sở hữu -> 403 FORBIDDEN (Thiếu quyền)
     const a7OwnDraft = await request('PATCH', `/api/dishes/${testDishId}`, {
       token: tEd1,
-      body: { name: 'Gà Giòn Đã Sửa Hợp Lệ', status: 'published', chefId: ed2ChefId },
+      body: { name: 'Gà Giòn Đã Sửa Hợp Lệ' },
     });
     assert.strictEqual(a7OwnDraft.status, 200);
     assert.strictEqual(a7OwnDraft.json.ok, true);
     assert.strictEqual(a7OwnDraft.json.data.name, 'Gà Giòn Đã Sửa Hợp Lệ');
     assert.strictEqual(a7OwnDraft.json.data.status, 'draft');
     assert.strictEqual(a7OwnDraft.json.data.chefId, ed1ChefId);
-    console.log('✔ [A7 - Cổng 4 ABAC] Editor 1 sửa món draft của mình -> 200 OK (bỏ qua status/chefId giả mạo trong body)');
+
+    const a7ChangeStatus = await request('PATCH', `/api/dishes/${testDishId}`, {
+      token: tEd1,
+      body: { status: 'published' },
+    });
+    assert.strictEqual(a7ChangeStatus.status, 403);
+    assert.strictEqual(a7ChangeStatus.json.error.code, 'FORBIDDEN');
+
+    const a7ChangeChefId = await request('PATCH', `/api/dishes/${testDishId}`, {
+      token: tEd1,
+      body: { chefId: ed2ChefId },
+    });
+    assert.strictEqual(a7ChangeChefId.status, 403);
+    assert.strictEqual(a7ChangeChefId.json.error.code, 'FORBIDDEN');
+    console.log('✔ [A7 - Cổng 4 ABAC] Editor 1 sửa thông tin món draft của mình -> 200 OK; cố đổi status hoặc chefId -> 403 FORBIDDEN (Thiếu quyền)');
 
     // Kịch bản A8 (TOCTOU Race Condition): Editor 1 đang mở form sửa, Admin đổi món sang published, Editor 1 bấm PATCH -> 403 FORBIDDEN
     const adminPublish = await request('PATCH', `/api/dishes/${testDishId}`, {

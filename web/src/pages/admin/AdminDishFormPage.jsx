@@ -117,14 +117,14 @@ export default function AdminDishFormPage({ mode = 'create' }) {
         // Kiểm tra quyền RBAC + ABAC khi mở trực tiếp URL /admin/dishes/:id/edit (Mục 6.4 Hợp đồng API)
         if (user && !canUpdateDish(user, d)) {
           if (user.role === 'viewer') {
-            setPageError('Tài khoản Viewer chỉ có quyền xem, không được phép chỉnh sửa món ăn (403 FORBIDDEN).');
+            setPageError('Tài khoản Viewer chỉ có quyền xem, không được phép chỉnh sửa món ăn.');
           } else if (Number(resolvedPrimaryChefId) !== Number(user.chefId)) {
             setPageError(
-              `Bạn (Chef #${user.chefId ?? '?'}) không được phép chỉnh sửa món ăn do đầu bếp khác (Chef #${resolvedPrimaryChefId || '?'}) phụ trách (403 FORBIDDEN - ABAC).`
+              `Bạn (Chef #${user.chefId ?? '?'}) không được phép chỉnh sửa món ăn do đầu bếp khác (Chef #${resolvedPrimaryChefId || '?'}) phụ trách.`
             );
           } else {
             setPageError(
-              'Món ăn này đã xuất bản (published). Tài khoản Editor chỉ được phép chỉnh sửa món đang ở trạng thái Bản nháp (draft) (403 FORBIDDEN - ABAC).'
+              'Món ăn này đã xuất bản (published). Tài khoản Editor chỉ được phép chỉnh sửa món đang ở trạng thái Bản nháp (draft).'
             );
           }
           setStatus('forbidden');
@@ -134,7 +134,7 @@ export default function AdminDishFormPage({ mode = 'create' }) {
         setStatus('ok');
       } else {
         if (user && !canCreate(user)) {
-          setPageError('Tài khoản Viewer chỉ có quyền xem, không được phép thêm món ăn mới (403 FORBIDDEN).');
+          setPageError('Tài khoản Viewer chỉ có quyền xem, không được phép thêm món ăn mới.');
           setStatus('forbidden');
           return;
         }
@@ -328,7 +328,7 @@ export default function AdminDishFormPage({ mode = 'create' }) {
       }
       if (result.error.status === 403 || result.error.code === 'FORBIDDEN') {
         setSubmitError(
-          `[403 FORBIDDEN] ${result.error.message || 'Bạn không có quyền thực hiện thao tác này.'}`
+          `${result.error.message || 'Bạn không có quyền thực hiện thao tác này.'}`
         );
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
@@ -397,7 +397,7 @@ export default function AdminDishFormPage({ mode = 'create' }) {
 
           {status === 'forbidden' && (
             <ForbiddenView
-              title="Không Đủ Quyền Truy Cập (403)"
+              title="Không Đủ Quyền Truy Cập"
               message={pageError}
               backTo="/admin/dishes"
               backLabel="Quay Lại Danh Sách Món Ăn"

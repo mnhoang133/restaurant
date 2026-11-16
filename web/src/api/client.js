@@ -248,8 +248,8 @@ async function request(endpoint, { method = 'GET', body = undefined, signal = un
           message:
             errInfo.message ||
             (response.status === 404
-              ? `Lỗi kỹ thuật (404): Đường dẫn API '${endpoint}' không tồn tại.`
-              : `Lỗi kỹ thuật từ máy chủ (HTTP ${response.status}). Hệ thống không thể xử lý yêu cầu lúc này.`),
+              ? 'Không tìm thấy dịch vụ yêu cầu trên máy chủ. Vui lòng thử lại sau.'
+              : 'Hệ thống đang bận hoặc gặp sự cố kỹ thuật. Vui lòng thử lại sau.'),
           requireCaptcha: errInfo.requireCaptcha,
           email: errInfo.email,
           fields: errInfo.fields || {},
