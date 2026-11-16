@@ -68,7 +68,10 @@ export function AuthProvider({ children }) {
         const authPaths = [
           '/login',
           '/register',
+          '/auth',
           '/activate',
+          '/mfa',
+          '/mfa/verify',
           '/forgot-password',
           '/forgot',
           '/reset-password',
@@ -90,6 +93,16 @@ export function AuthProvider({ children }) {
     }
     setUser(userData || null);
     setIsLoadingAuth(false);
+  }, []);
+
+  const updateUser = useCallback((partialOrUpdater) => {
+    setUser((prev) => {
+      if (typeof partialOrUpdater === 'function') {
+        return partialOrUpdater(prev);
+      }
+      if (!prev) return partialOrUpdater;
+      return { ...prev, ...partialOrUpdater };
+    });
   }, []);
 
   const clearAuth = useCallback(() => {
@@ -120,11 +133,12 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(user),
       isLoadingAuth,
       loginSuccess,
+      updateUser,
       logout,
       clearAuth,
       refreshUser,
     }),
-    [user, isLoadingAuth, loginSuccess, logout, clearAuth, refreshUser]
+    [user, isLoadingAuth, loginSuccess, updateUser, logout, clearAuth, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

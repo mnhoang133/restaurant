@@ -1,11 +1,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { apiClient, resolveImageUrl, getDishImageUrl, getCategoryImageUrl } from '../../api/client';
+import {
+  apiClient,
+  resolveImageUrl,
+  getDishImageUrl,
+  getCategoryImageUrl,
+  canCreate,
+  canUpdateEntity,
+  canDelete,
+} from '../../api/client';
 import AdminNav from '../../components/AdminNav';
 import Icon from '../../components/Icon';
 import { ErrorView, LoadingView } from '../../components/StateViews';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AdminChefsListPage() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const qParam = searchParams.get('q') || '';
   const fieldParam = searchParams.get('field') || '';
@@ -125,13 +135,15 @@ export default function AdminChefsListPage() {
                     className="field text-xs sm:text-sm"
                   />
                 </div>
-                <Link
-                  to="/admin/chefs/new"
-                  className="btn btn-primary h-12 px-5 w-full sm:w-auto justify-center flex-shrink-0 whitespace-nowrap"
-                >
-                  <Icon name="plus" cls="w-4 h-4" />
-                  <span>Thêm Đầu Bếp</span>
-                </Link>
+                {canCreate(user) && (
+                  <Link
+                    to="/admin/chefs/new"
+                    className="btn btn-primary h-12 px-5 w-full sm:w-auto justify-center flex-shrink-0 whitespace-nowrap"
+                  >
+                    <Icon name="plus" cls="w-4 h-4" />
+                    <span>Thêm Đầu Bếp</span>
+                  </Link>
+                )}
               </div>
 
               {/* Hàng bộ lọc và sắp xếp */}
@@ -285,20 +297,24 @@ export default function AdminChefsListPage() {
                         </button>
 
                         <div className="flex items-center gap-1.5">
-                          <Link
-                            to={`/admin/chefs/${chef.id}/edit`}
-                            className="icon-btn w-8 h-8"
-                            data-tip="Chỉnh sửa"
-                          >
-                            <Icon name="edit" cls="w-3.5 h-3.5" />
-                          </Link>
-                          <Link
-                            to={`/admin/chefs/${chef.id}/delete`}
-                            className="icon-btn is-danger w-8 h-8"
-                            data-tip="Xóa"
-                          >
-                            <Icon name="trash" cls="w-3.5 h-3.5" />
-                          </Link>
+                          {canUpdateEntity(user) && (
+                            <Link
+                              to={`/admin/chefs/${chef.id}/edit`}
+                              className="icon-btn w-8 h-8"
+                              data-tip="Chỉnh sửa"
+                            >
+                              <Icon name="edit" cls="w-3.5 h-3.5" />
+                            </Link>
+                          )}
+                          {canDelete(user) && (
+                            <Link
+                              to={`/admin/chefs/${chef.id}/delete`}
+                              className="icon-btn is-danger w-8 h-8"
+                              data-tip="Xóa"
+                            >
+                              <Icon name="trash" cls="w-3.5 h-3.5" />
+                            </Link>
+                          )}
                         </div>
                       </div>
                     </div>

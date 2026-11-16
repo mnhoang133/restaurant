@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { apiClient } from '../../api/client';
+import { apiClient, canCreate, canUpdateEntity } from '../../api/client';
 import AdminNav from '../../components/AdminNav';
 import Icon from '../../components/Icon';
-import { ErrorView, LoadingView, NotFoundView } from '../../components/StateViews';
+import { ErrorView, ForbiddenView, LoadingView, NotFoundView } from '../../components/StateViews';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AdminIngredientFormPage({ mode = 'create' }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const isEdit = mode === 'edit';
 
   const [status, setStatus] = useState(isEdit ? 'loading' : 'ok'); // 'loading' | 'ok' | 'notFound' | 'error'
@@ -22,6 +24,14 @@ export default function AdminIngredientFormPage({ mode = 'create' }) {
 
   const loadIngredient = useCallback(
     async (signal) => {
+      if (user && (isEdit ? !canUpdateEntity(user) : !canCreate(user))) {
+        setPageError(
+          `Tài khoản ${user.role} không có quyền ${isEdit ? 'chỉnh sửa' : 'thêm mới'} nguyên liệu (403 FORBIDDEN).`
+        );
+        setStatus('forbidden');
+        return;
+      }
+
       if (!isEdit) {
         document.title = 'Thêm nguyên liệu mới · CRISPY HOUSE';
         setStatus('ok');
@@ -132,6 +142,15 @@ export default function AdminIngredientFormPage({ mode = 'create' }) {
               message={pageError}
               backTo="/admin/ingredients"
               backLabel="Quay Lại Danh Sách"
+            />
+          )}
+
+          {status === 'forbidden' && (
+            <ForbiddenView
+              title="Không Đủ Quyền Truy Cập (403)"
+              message={pageError}
+              backTo="/admin/ingredients"
+              backLabel="Quay Lại Danh Sách Nguyên Liệu"
             />
           )}
 

@@ -26,6 +26,7 @@ export default function Layout() {
     pathname === '/login' ||
     pathname === '/register' ||
     pathname === '/auth' ||
+    pathname.startsWith('/mfa') ||
     pathname.startsWith('/activate') ||
     pathname.startsWith('/forgot') ||
     pathname.startsWith('/reset');
@@ -230,7 +231,16 @@ export default function Layout() {
                     </span>
                     <span className="px-1.5 py-0.5 rounded bg-ink-800 text-sand uppercase text-[9.5px] sm:text-[10px] font-semibold flex-shrink-0">
                       {user.role}
+                      {user.role === 'editor' && user.chefId ? ` · Chef #${user.chefId}` : ''}
                     </span>
+                    {user.mfaEnabled && (
+                      <span
+                        className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9.5px] font-bold flex-shrink-0"
+                        title="Đã bật xác thực 2 lớp (MFA TOTP)"
+                      >
+                        2FA
+                      </span>
+                    )}
                   </div>
                   <button
                     type="button"

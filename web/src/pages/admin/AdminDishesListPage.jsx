@@ -1,9 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { apiClient, resolveImageUrl, getDishImageUrl, getCategoryImageUrl } from '../../api/client';
+import {
+  apiClient,
+  resolveImageUrl,
+  getDishImageUrl,
+  getCategoryImageUrl,
+  canCreate,
+  canDelete,
+  canUpdateDish,
+} from '../../api/client';
 import AdminNav from '../../components/AdminNav';
 import Icon from '../../components/Icon';
 import { ErrorView, LoadingView } from '../../components/StateViews';
+import { useAuth } from '../../context/AuthContext';
 
 const DEFAULT_CATEGORIES = [
   'Gà Rán',
@@ -15,15 +24,18 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export default function AdminDishesListPage() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const qParam = searchParams.get('q') || '';
   const categoryParam = searchParams.get('category') || '';
   const isAvailableParam = searchParams.get('isAvailable') || '';
+  const pubStatusParam = searchParams.get('status') || '';
   const sortParam = searchParams.get('sort') || 'newest';
 
   const [searchInput, setSearchInput] = useState(qParam);
   const [categoryInput, setCategoryInput] = useState(categoryParam);
   const [isAvailableInput, setIsAvailableInput] = useState(isAvailableParam);
+  const [pubStatusInput, setPubStatusInput] = useState(pubStatusParam);
   const [sortInput, setSortInput] = useState(sortParam);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
 
@@ -58,18 +70,19 @@ export default function AdminDishesListPage() {
     setSearchInput(qParam);
     setCategoryInput(categoryParam);
     setIsAvailableInput(isAvailableParam);
+    setPubStatusInput(pubStatusParam);
     setSortInput(sortParam);
-  }, [qParam, categoryParam, isAvailableParam, sortParam]);
+  }, [qParam, categoryParam, isAvailableParam, pubStatusParam, sortParam]);
 
   // Real-time debounced typing filter: Tự động cập nhật sau 250ms không gõ phím, mượt mà 60 FPS
   useEffect(() => {
     if (searchInput === qParam) return;
     const timer = setTimeout(() => {
-      applyFilterParams(searchInput, categoryInput, isAvailableInput, sortInput);
+      applyFilterParams(searchInput, categoryInput, isAvailableInput, sortInput, pubStatusInput);
       setCurrentPage(1);
     }, 250);
     return () => clearTimeout(timer);
-  }, [searchInput, qParam, categoryInput, isAvailableInput, sortInput]);
+  }, [searchInput, qParam, categoryInput, isAvailableInput, sortInput, pubStatusInput]);
 
   const fetchDishes = useCallback(
     async (signal) => {
@@ -107,11 +120,14 @@ export default function AdminDishesListPage() {
     return () => controller.abort();
   }, [fetchDishes]);
 
-  const applyFilterParams = (nextQ, nextCat, nextAvail, nextSort) => {
+  const applyFilterParams = (nextQ, nextCat, nextAvail, nextSort, nextPubStatus = pubStatusInput) => {
     const nextParams = {};
     if ((nextQ || '').trim()) nextParams.q = nextQ.trim();
     if ((nextCat || '').trim()) nextParams.category = nextCat.trim();
     if (nextAvail === 'true' || nextAvail === 'false') nextParams.isAvailable = nextAvail;
+    if (nextPubStatus === 'draft' || nextPubStatus === 'published') {
+      nextParams.status = nextPubStatus;
+    }
     if (nextSort && nextSort !== 'newest') nextParams.sort = nextSort;
     setSearchParams(nextParams);
     setCurrentPage(1);
@@ -119,7 +135,7 @@ export default function AdminDishesListPage() {
 
   const handleFilterSubmit = (e) => {
     e.preventDefault();
-    applyFilterParams(searchInput, categoryInput, isAvailableInput, sortInput);
+    applyFilterParams(searchInput, categoryInput, isAvailableInput, sortInput, pubStatusInput);
     setCurrentPage(1);
   };
 
@@ -127,21 +143,27 @@ export default function AdminDishesListPage() {
     setSearchInput('');
     setCategoryInput('');
     setIsAvailableInput('');
+    setPubStatusInput('');
     setSortInput('newest');
     setSearchParams({});
     setCurrentPage(1);
   };
 
-  // Sắp xếp danh sách món ăn phía client có Memoization chống lag
+  // Lọc theo trạng thái xuất bản (draft / published) và sắp xếp danh sách món ăn phía client
   const sortedDishes = useMemo(() => {
-    const list = [...dishes];
+    const list = dishes.filter((d) => {
+      if (pubStatusInput === 'draft' || pubStatusInput === 'published') {
+        return (d.status || 'draft') === pubStatusInput;
+      }
+      return true;
+    });
     if (sortInput === 'name_asc') return list.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
     if (sortInput === 'name_desc') return list.sort((a, b) => b.name.localeCompare(a.name, 'vi'));
     if (sortInput === 'price_asc') return list.sort((a, b) => a.price - b.price);
     if (sortInput === 'price_desc') return list.sort((a, b) => b.price - a.price);
     if (sortInput === 'oldest') return list.sort((a, b) => a.id - b.id);
     return list.sort((a, b) => b.id - a.id); // newest (mặc định)
-  }, [dishes, sortInput]);
+  }, [dishes, sortInput, pubStatusInput]);
 
   const totalPages = Math.ceil(sortedDishes.length / pageSize) || 1;
 
@@ -169,7 +191,9 @@ export default function AdminDishesListPage() {
     return sortedDishes.slice(start, start + pageSize);
   }, [sortedDishes, currentPage, totalPages, pageSize]);
 
-  const hasFilter = Boolean(qParam || categoryParam || isAvailableParam || sortParam !== 'newest');
+  const hasFilter = Boolean(
+    qParam || categoryParam || isAvailableParam || pubStatusParam || sortParam !== 'newest'
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -198,7 +222,7 @@ export default function AdminDishesListPage() {
                       type="button"
                       onClick={() => {
                         setSearchInput('');
-                        applyFilterParams('', categoryInput, isAvailableInput, sortInput);
+                        applyFilterParams('', categoryInput, isAvailableInput, sortInput, pubStatusInput);
                         setCurrentPage(1);
                       }}
                       className="absolute inset-y-0 right-0 pr-3 flex items-center text-sand-dim hover:text-cream transition-colors"
@@ -209,13 +233,15 @@ export default function AdminDishesListPage() {
                   )}
                 </div>
 
-                <Link
-                  to="/admin/dishes/new"
-                  className="btn btn-primary h-12 px-5 w-full sm:w-auto justify-center flex-shrink-0"
-                >
-                  <Icon name="plus" cls="w-4 h-4" />
-                  <span>Thêm Món Mới</span>
-                </Link>
+                {canCreate(user) && (
+                  <Link
+                    to="/admin/dishes/new"
+                    className="btn btn-primary h-12 px-5 w-full sm:w-auto justify-center flex-shrink-0"
+                  >
+                    <Icon name="plus" cls="w-4 h-4" />
+                    <span>Thêm Món Mới</span>
+                  </Link>
+                )}
               </div>
 
               {/* Hàng bộ lọc và sắp xếp */}
@@ -228,7 +254,7 @@ export default function AdminDishesListPage() {
                     onChange={(e) => {
                       const val = e.target.value;
                       setCategoryInput(val);
-                      applyFilterParams(searchInput, val, isAvailableInput, sortInput);
+                      applyFilterParams(searchInput, val, isAvailableInput, sortInput, pubStatusInput);
                     }}
                     className="field text-xs h-9 py-1 flex-1 min-w-0"
                   >
@@ -241,15 +267,33 @@ export default function AdminDishesListPage() {
                   </select>
                 </div>
 
-                {/* Lọc trạng thái */}
+                {/* Lọc trạng thái xuất bản ABAC (draft / published) */}
                 <div className="flex items-center gap-1.5 w-full sm:w-auto sm:flex-initial min-w-0">
-                  <span className="text-sand-dim font-medium whitespace-nowrap">Trạng thái:</span>
+                  <span className="text-sand-dim font-medium whitespace-nowrap">Xuất bản:</span>
+                  <select
+                    value={pubStatusInput}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPubStatusInput(val);
+                      applyFilterParams(searchInput, categoryInput, isAvailableInput, sortInput, val);
+                    }}
+                    className="field text-xs h-9 py-1 flex-1 min-w-0"
+                  >
+                    <option value="">Tất cả</option>
+                    <option value="draft">Draft (Bản nháp)</option>
+                    <option value="published">Published (Đã xuất bản)</option>
+                  </select>
+                </div>
+
+                {/* Lọc trạng thái phục vụ */}
+                <div className="flex items-center gap-1.5 w-full sm:w-auto sm:flex-initial min-w-0">
+                  <span className="text-sand-dim font-medium whitespace-nowrap">Phục vụ:</span>
                   <select
                     value={isAvailableInput}
                     onChange={(e) => {
                       const val = e.target.value;
                       setIsAvailableInput(val);
-                      applyFilterParams(searchInput, categoryInput, val, sortInput);
+                      applyFilterParams(searchInput, categoryInput, val, sortInput, pubStatusInput);
                     }}
                     className="field text-xs h-9 py-1 flex-1 min-w-0"
                   >
@@ -267,7 +311,7 @@ export default function AdminDishesListPage() {
                     onChange={(e) => {
                       const val = e.target.value;
                       setSortInput(val);
-                      applyFilterParams(searchInput, categoryInput, isAvailableInput, val);
+                      applyFilterParams(searchInput, categoryInput, isAvailableInput, val, pubStatusInput);
                     }}
                     className="field text-xs h-9 py-1 flex-1 min-w-0"
                   >
@@ -325,6 +369,16 @@ export default function AdminDishesListPage() {
                 {paginatedDishes.length > 0 ? (
                   paginatedDishes.map((dish) => {
                     const img = getDishImageUrl(dish);
+                    const dishStatus = dish.status || 'draft';
+                    const dishChefId = dish.chefId ?? dish.chef?.id ?? null;
+                    const dishChefLabel = dish.chef?.name
+                      ? `${dish.chef.name} (#${dishChefId})`
+                      : dishChefId
+                      ? `Chef #${dishChefId}`
+                      : 'Chưa gán';
+                    const editable = canUpdateDish(user, dish);
+                    const deletable = canDelete(user);
+
                     return (
                       <div key={dish.id} className="p-4 space-y-3">
                         <div className="flex items-start gap-3 min-w-0">
@@ -342,11 +396,10 @@ export default function AdminDishesListPage() {
                             <div className="font-bold text-sm text-cream break-words leading-snug">
                               {dish.name}
                             </div>
-                            {dish.description && (
-                              <p className="text-xs text-sand-dim line-clamp-2 break-words">
-                                {dish.description}
-                              </p>
-                            )}
+                            <div className="text-[11px] text-sand-dim flex flex-wrap items-center gap-1.5">
+                              <span>Phụ trách:</span>
+                              <b className="text-cream">{dishChefLabel}</b>
+                            </div>
                             <div className="font-mono font-bold text-ember text-sm pt-0.5">
                               {Number(dish.price).toLocaleString('vi-VN')}&nbsp;đ
                             </div>
@@ -356,6 +409,15 @@ export default function AdminDishesListPage() {
                         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-line/50">
                           <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                             <span className="badge text-[11px]">{dish.category}</span>
+                            {dishStatus === 'published' ? (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-[10px] uppercase">
+                                published
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 font-mono font-bold text-[10px] uppercase">
+                                draft
+                              </span>
+                            )}
                             {dish.isAvailable ? (
                               <span className="badge badge-ok badge-dot text-[11px]">
                                 Đang phục vụ
@@ -375,20 +437,24 @@ export default function AdminDishesListPage() {
                             >
                               <Icon name="eye" cls="w-3.5 h-3.5" />
                             </Link>
-                            <Link
-                              to={`/admin/dishes/${dish.id}/edit`}
-                              className="icon-btn w-8 h-8"
-                              aria-label="Sửa"
-                            >
-                              <Icon name="edit" cls="w-3.5 h-3.5" />
-                            </Link>
-                            <Link
-                              to={`/admin/dishes/${dish.id}/delete`}
-                              className="icon-btn is-danger w-8 h-8"
-                              aria-label="Xóa"
-                            >
-                              <Icon name="trash" cls="w-3.5 h-3.5" />
-                            </Link>
+                            {editable && (
+                              <Link
+                                to={`/admin/dishes/${dish.id}/edit`}
+                                className="icon-btn w-8 h-8"
+                                aria-label="Sửa"
+                              >
+                                <Icon name="edit" cls="w-3.5 h-3.5" />
+                              </Link>
+                            )}
+                            {deletable && (
+                              <Link
+                                to={`/admin/dishes/${dish.id}/delete`}
+                                className="icon-btn is-danger w-8 h-8"
+                                aria-label="Xóa"
+                              >
+                                <Icon name="trash" cls="w-3.5 h-3.5" />
+                              </Link>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -409,6 +475,7 @@ export default function AdminDishesListPage() {
                       <th className="w-16">Hình ảnh</th>
                       <th>Tên món ăn</th>
                       <th>Danh mục</th>
+                      <th>Đầu bếp (ABAC)</th>
                       <th>Giá bán</th>
                       <th>Trạng thái</th>
                       <th className="text-right">Thao tác</th>
@@ -418,6 +485,15 @@ export default function AdminDishesListPage() {
                     {paginatedDishes.length > 0 ? (
                       paginatedDishes.map((dish) => {
                         const img = getDishImageUrl(dish);
+                        const dishStatus = dish.status || 'draft';
+                        const dishChefId = dish.chefId ?? dish.chef?.id ?? null;
+                        const isMyDish =
+                          user?.role === 'editor' &&
+                          dishChefId !== null &&
+                          Number(dishChefId) === Number(user?.chefId);
+                        const editable = canUpdateDish(user, dish);
+                        const deletable = canDelete(user);
+
                         return (
                           <tr key={dish.id}>
                             <td>
@@ -446,20 +522,51 @@ export default function AdminDishesListPage() {
                               <span className="badge text-xs">{dish.category}</span>
                             </td>
 
+                            <td>
+                              {dishChefId ? (
+                                <div className="space-y-0.5">
+                                  <div className="text-xs font-bold text-cream">
+                                    {dish.chef?.name || `Chef #${dishChefId}`}
+                                  </div>
+                                  <div className="text-[11px] font-mono text-sand-dim">
+                                    chefId: <b>{dishChefId}</b>
+                                    {isMyDish && (
+                                      <span className="ml-1.5 text-brand font-sans font-bold">
+                                        (Của bạn)
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-sand-dim italic">Chưa gán</span>
+                              )}
+                            </td>
+
                             <td className="font-mono font-bold text-ember text-sm whitespace-nowrap">
                               {Number(dish.price).toLocaleString('vi-VN')}&nbsp;đ
                             </td>
 
                             <td>
-                              {dish.isAvailable ? (
-                                <span className="badge badge-ok badge-dot text-xs">
-                                  Đang phục vụ
-                                </span>
-                              ) : (
-                                <span className="badge badge-off badge-dot text-xs">
-                                  Tạm ngưng
-                                </span>
-                              )}
+                              <div className="flex flex-col items-start gap-1">
+                                {dishStatus === 'published' ? (
+                                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-[10.5px] uppercase">
+                                    published
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 font-mono font-bold text-[10.5px] uppercase">
+                                    draft
+                                  </span>
+                                )}
+                                {dish.isAvailable ? (
+                                  <span className="badge badge-ok badge-dot text-[11px]">
+                                    Đang phục vụ
+                                  </span>
+                                ) : (
+                                  <span className="badge badge-off badge-dot text-[11px]">
+                                    Tạm ngưng
+                                  </span>
+                                )}
+                              </div>
                             </td>
 
                             <td className="text-right whitespace-nowrap">
@@ -471,20 +578,24 @@ export default function AdminDishesListPage() {
                                 >
                                   <Icon name="eye" cls="w-3.5 h-3.5" />
                                 </Link>
-                                <Link
-                                  to={`/admin/dishes/${dish.id}/edit`}
-                                  className="icon-btn w-8 h-8"
-                                  data-tip="Sửa"
-                                >
-                                  <Icon name="edit" cls="w-3.5 h-3.5" />
-                                </Link>
-                                <Link
-                                  to={`/admin/dishes/${dish.id}/delete`}
-                                  className="icon-btn is-danger w-8 h-8"
-                                  data-tip="Xóa"
-                                >
-                                  <Icon name="trash" cls="w-3.5 h-3.5" />
-                                </Link>
+                                {editable && (
+                                  <Link
+                                    to={`/admin/dishes/${dish.id}/edit`}
+                                    className="icon-btn w-8 h-8"
+                                    data-tip="Sửa"
+                                  >
+                                    <Icon name="edit" cls="w-3.5 h-3.5" />
+                                  </Link>
+                                )}
+                                {deletable && (
+                                  <Link
+                                    to={`/admin/dishes/${dish.id}/delete`}
+                                    className="icon-btn is-danger w-8 h-8"
+                                    data-tip="Xóa"
+                                  >
+                                    <Icon name="trash" cls="w-3.5 h-3.5" />
+                                  </Link>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -492,7 +603,7 @@ export default function AdminDishesListPage() {
                       })
                     ) : (
                       <tr>
-                        <td colSpan="6" className="text-center py-12 text-sand-dim text-xs">
+                        <td colSpan="7" className="text-center py-12 text-sand-dim text-xs">
                           Không tìm thấy món ăn nào phù hợp với bộ lọc.
                         </td>
                       </tr>

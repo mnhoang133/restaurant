@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { apiClient } from '../../api/client';
+import { apiClient, canDelete } from '../../api/client';
 import AdminNav from '../../components/AdminNav';
 import Icon from '../../components/Icon';
-import { ErrorView, LoadingView, NotFoundView } from '../../components/StateViews';
+import { ErrorView, ForbiddenView, LoadingView, NotFoundView } from '../../components/StateViews';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AdminChefDeletePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [status, setStatus] = useState('loading'); // 'loading' | 'ok' | 'notFound' | 'error'
   const [chef, setChef] = useState(null);
@@ -37,9 +39,16 @@ export default function AdminChefDeletePage() {
 
       setChef(result.data);
       document.title = `Xác nhận xóa: ${result.data.name} · CRISPY HOUSE`;
+      if (user && !canDelete(user)) {
+        setErrorMsg(
+          `Tài khoản ${user.role} không có quyền xóa đầu bếp (Chỉ Admin mới được phép xóa - 403 FORBIDDEN).`
+        );
+        setStatus('forbidden');
+        return;
+      }
       setStatus('ok');
     },
-    [id]
+    [id, user]
   );
 
   useEffect(() => {
@@ -85,6 +94,15 @@ export default function AdminChefDeletePage() {
               message={errorMsg}
               backTo="/admin/chefs"
               backLabel="Quay Lại Danh Sách"
+            />
+          )}
+
+          {status === 'forbidden' && (
+            <ForbiddenView
+              title="Không Đủ Quyền Xóa Đầu Bếp (403)"
+              message={errorMsg}
+              backTo="/admin/chefs"
+              backLabel="Quay Lại Danh Sách Đầu Bếp"
             />
           )}
 

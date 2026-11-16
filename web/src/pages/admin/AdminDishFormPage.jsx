@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { apiClient, resolveImageUrl } from '../../api/client';
+import { apiClient, resolveImageUrl, canCreate, canUpdateDish } from '../../api/client';
 import AdminNav from '../../components/AdminNav';
 import Icon from '../../components/Icon';
-import { ErrorView, LoadingView, NotFoundView } from '../../components/StateViews';
+import { ErrorView, ForbiddenView, LoadingView, NotFoundView } from '../../components/StateViews';
+import { useAuth } from '../../context/AuthContext';
 
 const CATEGORIES = [
   'Gà Rán',
@@ -16,9 +17,10 @@ const CATEGORIES = [
 export default function AdminDishFormPage({ mode = 'create' }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const isEdit = mode === 'edit';
 
-  const [status, setStatus] = useState('loading'); // 'loading' | 'ok' | 'notFound' | 'error'
+  const [status, setStatus] = useState('loading'); // 'loading' | 'ok' | 'notFound' | 'forbidden' | 'error'
   const [pageError, setPageError] = useState('');
 
   // Form states
@@ -28,6 +30,8 @@ export default function AdminDishFormPage({ mode = 'create' }) {
   const [category, setCategory] = useState(isEdit ? 'Gà Rán' : '');
   const [isAvailable, setIsAvailable] = useState(true);
   const [description, setDescription] = useState('');
+  const [primaryChefId, setPrimaryChefId] = useState(''); // Đầu bếp phụ trách chính (ABAC chefId)
+  const [dishStatus, setDishStatus] = useState('draft'); // Trạng thái xuất bản (ABAC status: draft | published)
   const [selectedChefIds, setSelectedChefIds] = useState([]);
   const [selectedIngredientIds, setSelectedIngredientIds] = useState([]);
 
@@ -87,12 +91,17 @@ export default function AdminDishFormPage({ mode = 'create' }) {
         }
 
         const d = dishRes.data;
+        const resolvedPrimaryChefId = d.chefId ?? d.chef?.id ?? '';
+        const resolvedDishStatus = d.status || 'draft';
+
         setCode(d.code || '');
         setName(d.name || '');
         setPrice(d.price !== undefined ? String(d.price) : '');
         setCategory(d.category || 'Gà rán');
         setIsAvailable(Boolean(d.isAvailable));
         setDescription(d.description || '');
+        setPrimaryChefId(resolvedPrimaryChefId !== '' && resolvedPrimaryChefId !== null ? String(resolvedPrimaryChefId) : '');
+        setDishStatus(resolvedDishStatus);
         setExistingImages(Array.isArray(d.images) ? d.images : []);
         setDeleteImageIds([]);
         setSelectedChefIds(
@@ -104,8 +113,32 @@ export default function AdminDishFormPage({ mode = 'create' }) {
         setAllChefs(Array.isArray(chefsRes.data) ? chefsRes.data : []);
         setAllIngredients(Array.isArray(ingredientsRes.data) ? ingredientsRes.data : []);
         document.title = `Chỉnh sửa: ${d.name} · CRISPY HOUSE`;
+
+        // Kiểm tra quyền RBAC + ABAC khi mở trực tiếp URL /admin/dishes/:id/edit (Mục 6.4 Hợp đồng API)
+        if (user && !canUpdateDish(user, d)) {
+          if (user.role === 'viewer') {
+            setPageError('Tài khoản Viewer chỉ có quyền xem, không được phép chỉnh sửa món ăn (403 FORBIDDEN).');
+          } else if (Number(resolvedPrimaryChefId) !== Number(user.chefId)) {
+            setPageError(
+              `Bạn (Chef #${user.chefId ?? '?'}) không được phép chỉnh sửa món ăn do đầu bếp khác (Chef #${resolvedPrimaryChefId || '?'}) phụ trách (403 FORBIDDEN - ABAC).`
+            );
+          } else {
+            setPageError(
+              'Món ăn này đã xuất bản (published). Tài khoản Editor chỉ được phép chỉnh sửa món đang ở trạng thái Bản nháp (draft) (403 FORBIDDEN - ABAC).'
+            );
+          }
+          setStatus('forbidden');
+          return;
+        }
+
         setStatus('ok');
       } else {
+        if (user && !canCreate(user)) {
+          setPageError('Tài khoản Viewer chỉ có quyền xem, không được phép thêm món ăn mới (403 FORBIDDEN).');
+          setStatus('forbidden');
+          return;
+        }
+
         const [chefsRes, ingredientsRes] = await Promise.all([
           apiClient.chefs.list({}, signal),
           apiClient.ingredients.list({}, signal),
@@ -122,13 +155,20 @@ export default function AdminDishFormPage({ mode = 'create' }) {
           return;
         }
 
-        setAllChefs(Array.isArray(chefsRes.data) ? chefsRes.data : []);
+        const chefsList = Array.isArray(chefsRes.data) ? chefsRes.data : [];
+        setAllChefs(chefsList);
         setAllIngredients(Array.isArray(ingredientsRes.data) ? ingredientsRes.data : []);
+        if (user?.role === 'editor' && user?.chefId) {
+          setPrimaryChefId(String(user.chefId));
+        } else if (chefsList.length > 0 && !primaryChefId) {
+          setPrimaryChefId(String(chefsList[0].id));
+        }
+        setDishStatus('draft');
         document.title = 'Thêm món ăn mới · CRISPY HOUSE';
         setStatus('ok');
       }
     },
-    [id, isEdit]
+    [id, isEdit, user]
   );
 
   useEffect(() => {
@@ -241,6 +281,12 @@ export default function AdminDishFormPage({ mode = 'create' }) {
       formData.append('category', category);
       formData.append('isAvailable', String(isAvailable));
       formData.append('description', description);
+      if (user?.role === 'admin') {
+        formData.append('status', dishStatus || 'draft');
+        if (primaryChefId !== '') {
+          formData.append('chefId', String(primaryChefId));
+        }
+      }
       formData.append('chefIds', JSON.stringify(selectedChefIds));
       formData.append('ingredientIds', JSON.stringify(selectedIngredientIds));
       if (isEdit && deleteImageIds.length > 0) {
@@ -256,6 +302,12 @@ export default function AdminDishFormPage({ mode = 'create' }) {
         category,
         isAvailable,
         description,
+        ...(user?.role === 'admin'
+          ? {
+              status: dishStatus || 'draft',
+              chefId: primaryChefId !== '' ? Number(primaryChefId) : null,
+            }
+          : {}),
         chefIds: selectedChefIds,
         ingredientIds: selectedIngredientIds,
         ...(isEdit && deleteImageIds.length > 0 ? { deleteImageIds } : {}),
@@ -272,6 +324,13 @@ export default function AdminDishFormPage({ mode = 'create' }) {
       if (result.error.code === 'NOT_FOUND') {
         setPageError(result.error.message || 'Món ăn không tồn tại.');
         setStatus('notFound');
+        return;
+      }
+      if (result.error.status === 403 || result.error.code === 'FORBIDDEN') {
+        setSubmitError(
+          `[403 FORBIDDEN] ${result.error.message || 'Bạn không có quyền thực hiện thao tác này.'}`
+        );
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
       setSubmitError(result.error.message || 'Dữ liệu không hợp lệ, vui lòng kiểm tra lại.');
@@ -333,6 +392,15 @@ export default function AdminDishFormPage({ mode = 'create' }) {
               message={pageError}
               backTo="/admin/dishes"
               backLabel="Quay Lại Danh Sách"
+            />
+          )}
+
+          {status === 'forbidden' && (
+            <ForbiddenView
+              title="Không Đủ Quyền Truy Cập (403)"
+              message={pageError}
+              backTo="/admin/dishes"
+              backLabel="Quay Lại Danh Sách Món Ăn"
             />
           )}
 
@@ -432,6 +500,82 @@ export default function AdminDishFormPage({ mode = 'create' }) {
                       </p>
                     )}
                   </div>
+                </div>
+
+                {/* Phân quyền ABAC: Đầu bếp phụ trách chính (chefId) & Trạng thái xuất bản (status) */}
+                <div className="p-4 rounded-2xl bg-ink-850 border border-line space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-cream">
+                      Thuộc Tính Phân Quyền ABAC (Đầu Bếp Phụ Trách & Xuất Bản)
+                    </span>
+                    <span className="badge text-[10.5px] uppercase font-bold">
+                      Quyền hiện tại: {user?.role || 'guest'}
+                    </span>
+                  </div>
+
+                  {user?.role === 'admin' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="dish-primary-chef" className="field-label">
+                          Đầu Bếp Phụ Trách Chính (<code>chefId</code>)
+                        </label>
+                        <select
+                          id="dish-primary-chef"
+                          name="chefId"
+                          value={primaryChefId}
+                          onChange={(e) => setPrimaryChefId(e.target.value)}
+                          className="field"
+                        >
+                          <option value="">-- Chưa gán đầu bếp chính --</option>
+                          {allChefs.map((c) => (
+                            <option key={c.id} value={String(c.id)}>
+                              #{c.id} — {c.name} ({c.field})
+                            </option>
+                          ))}
+                        </select>
+                        <p className="field-hint">
+                          Editor tương ứng với <code>chefId</code> này sẽ được quyền sửa khi món còn ở trạng thái <code>draft</code>.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label htmlFor="dish-pub-status" className="field-label">
+                          Trạng Thái Xuất Bản (<code>status</code>)
+                        </label>
+                        <select
+                          id="dish-pub-status"
+                          name="status"
+                          value={dishStatus}
+                          onChange={(e) => setDishStatus(e.target.value)}
+                          className="field font-mono font-bold"
+                        >
+                          <option value="draft">draft (Bản nháp — Cho phép Editor sửa)</option>
+                          <option value="published">published (Đã xuất bản — Khóa sửa với Editor)</option>
+                        </select>
+                        <p className="field-hint">
+                          Chỉ Admin mới có quyền chuyển món sang <code>published</code> hoặc đổi <code>chefId</code>.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 rounded-xl bg-white border border-line flex items-center justify-between">
+                        <span className="text-sand-dim">Đầu bếp phụ trách (<code>chefId</code>):</span>
+                        <span className="font-mono font-bold text-brand">
+                          Chef #{user?.chefId ?? (primaryChefId || '?')}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-white border border-line flex items-center justify-between">
+                        <span className="text-sand-dim">Trạng thái (<code>status</code>):</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 font-mono font-bold text-[11px] uppercase">
+                          {dishStatus || 'draft'}
+                        </span>
+                      </div>
+                      <p className="sm:col-span-2 text-[11px] text-sand-dim">
+                        Tài khoản <b>Editor</b> tự động nhận <code>chefId = {user?.chefId ?? '?'}</code> và <code>status = draft</code>. Chỉ <b>Admin</b> mới được phép đổi đầu bếp phụ trách hoặc xuất bản món ăn.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Trạng thái phục vụ */}

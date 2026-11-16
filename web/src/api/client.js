@@ -369,6 +369,11 @@ export const apiClient = {
     activate: (body) => request('/auth/activate', { method: 'POST', body }),
     resendOtp: (body) => request('/auth/resend-otp', { method: 'POST', body }),
     login: (body) => request('/auth/login', { method: 'POST', body }),
+    verifyMfa: (body) => request('/auth/mfa', { method: 'POST', body }),
+    setupMfa: () => request('/auth/mfa/setup', { method: 'POST', body: {} }),
+    enableMfa: (body) => request('/auth/mfa/enable', { method: 'POST', body }),
+    disableMfa: (body) => request('/auth/mfa/disable', { method: 'POST', body }),
+    regenerateRecoveryCodes: (body) => request('/auth/mfa/recovery-codes', { method: 'POST', body }),
     me: (signal) => request('/auth/me', { method: 'GET', signal }),
     logout: () => request('/auth/logout', { method: 'POST' }),
     forgotPassword: (body) => request('/auth/forgot-password', { method: 'POST', body }),
@@ -379,4 +384,36 @@ export const apiClient = {
       }),
     resetPassword: (body) => request('/auth/reset-password', { method: 'POST', body }),
   },
+};
+
+/**
+ * ==========================================================================
+ * HELPERS KIỂM TRA QUYỀN TRÊN GIAO DIỆN (RBAC & ABAC - PHẦN 5 HỢP ĐỒNG API)
+ * ==========================================================================
+ * Lưu ý: Ẩn/hiện nút trên giao diện chỉ phục vụ trải nghiệm người dùng;
+ * quyết định bảo vệ dữ liệu cuối cùng nằm ở 4 cổng kiểm tra trên Backend.
+ */
+export const canCreate = (user) =>
+  Boolean(user && (user.role === 'admin' || user.role === 'editor'));
+
+export const canUpdateEntity = (user) =>
+  Boolean(user && (user.role === 'admin' || user.role === 'editor'));
+
+export const canDelete = (user) =>
+  Boolean(user && user.role === 'admin');
+
+export const canUpdateDish = (user, dish) => {
+  if (!user || !dish) return false;
+  if (user.role === 'admin') return true;
+  if (user.role === 'editor') {
+    const dishChefId = dish.chefId ?? dish.chef?.id ?? null;
+    return (
+      dishChefId !== null &&
+      user.chefId !== null &&
+      user.chefId !== undefined &&
+      Number(dishChefId) === Number(user.chefId) &&
+      (dish.status || 'draft') === 'draft'
+    );
+  }
+  return false;
 };

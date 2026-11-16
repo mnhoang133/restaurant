@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { apiClient } from '../../api/client';
+import { apiClient, canCreate, canUpdateEntity, canDelete } from '../../api/client';
 import AdminNav from '../../components/AdminNav';
 import Icon from '../../components/Icon';
 import { ErrorView, LoadingView } from '../../components/StateViews';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AdminIngredientsListPage() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const qParam = searchParams.get('q') || '';
 
@@ -116,13 +118,15 @@ export default function AdminIngredientsListPage() {
                     <span>Xóa lọc</span>
                   </button>
                 )}
-                <Link
-                  to="/admin/ingredients/new"
-                  className="btn btn-primary h-12 px-5 w-full sm:w-auto justify-center flex-shrink-0 whitespace-nowrap"
-                >
-                  <Icon name="plus" cls="w-4 h-4" />
-                  <span>Thêm Nguyên Liệu</span>
-                </Link>
+                {canCreate(user) && (
+                  <Link
+                    to="/admin/ingredients/new"
+                    className="btn btn-primary h-12 px-5 w-full sm:w-auto justify-center flex-shrink-0 whitespace-nowrap"
+                  >
+                    <Icon name="plus" cls="w-4 h-4" />
+                    <span>Thêm Nguyên Liệu</span>
+                  </Link>
+                )}
               </div>
             </form>
           </div>
@@ -165,20 +169,24 @@ export default function AdminIngredientsListPage() {
 
                           <td className="text-right whitespace-nowrap">
                             <div className="inline-flex items-center gap-1.5 flex-nowrap">
-                              <Link
-                                to={`/admin/ingredients/${ing.id}/edit`}
-                                className="icon-btn w-8 h-8"
-                                data-tip="Chỉnh sửa"
-                              >
-                                <Icon name="edit" cls="w-3.5 h-3.5" />
-                              </Link>
-                              <Link
-                                to={`/admin/ingredients/${ing.id}/delete`}
-                                className="icon-btn is-danger w-8 h-8"
-                                data-tip="Xóa"
-                              >
-                                <Icon name="trash" cls="w-3.5 h-3.5" />
-                              </Link>
+                              {canUpdateEntity(user) && (
+                                <Link
+                                  to={`/admin/ingredients/${ing.id}/edit`}
+                                  className="icon-btn w-8 h-8"
+                                  data-tip="Chỉnh sửa"
+                                >
+                                  <Icon name="edit" cls="w-3.5 h-3.5" />
+                                </Link>
+                              )}
+                              {canDelete(user) && (
+                                <Link
+                                  to={`/admin/ingredients/${ing.id}/delete`}
+                                  className="icon-btn is-danger w-8 h-8"
+                                  data-tip="Xóa"
+                                >
+                                  <Icon name="trash" cls="w-3.5 h-3.5" />
+                                </Link>
+                              )}
                             </div>
                           </td>
                         </tr>

@@ -127,6 +127,47 @@ export function NotFoundView({
 }
 
 /**
+ * Hiển thị trạng thái Không đủ quyền (403 FORBIDDEN từ RBAC hoặc ABAC).
+ * Giữ nguyên phiên đăng nhập, không xóa token.
+ */
+export function ForbiddenView({
+  title = 'Không Đủ Quyền Truy Cập (403)',
+  message = 'Tài khoản của bạn không có quyền thực hiện thao tác này hoặc bản ghi không thỏa điều kiện phân quyền (RBAC / ABAC).',
+  backTo = '/admin/dishes',
+  backLabel = 'Quay Lại Quản Lý',
+}) {
+  return (
+    <div
+      className="max-w-lg mx-auto py-12 sm:py-16 px-4 text-center space-y-6"
+      data-error-code="FORBIDDEN"
+    >
+      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-brand/10 border border-brand/20 text-brand mx-auto grid place-items-center font-mono font-black text-3xl sm:text-4xl shadow-xl shadow-brand/20">
+        403
+      </div>
+
+      <div className="space-y-2">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-cream tracking-tight break-words">
+          {title}
+        </h1>
+        <p className="text-sand text-xs sm:text-sm leading-relaxed max-w-md mx-auto break-words">
+          {message}
+        </p>
+      </div>
+
+      <div className="pt-4 flex flex-col-reverse sm:flex-row justify-center gap-3">
+        <Link to={backTo} className="btn btn-primary btn-sm px-6 w-full sm:w-auto justify-center">
+          <Icon name="arrow-left" cls="w-4 h-4" />
+          <span>{backLabel}</span>
+        </Link>
+        <Link to="/dishes" className="btn btn-ghost btn-sm px-6 w-full sm:w-auto justify-center">
+          Về Thực Đơn
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Hiển thị trạng thái Lỗi (Lỗi kỹ thuật tầng 1/2 hoặc Lỗi nghiệp vụ ok: false khi tải dữ liệu)
  */
 export function ErrorView({

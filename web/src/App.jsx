@@ -8,6 +8,7 @@ import { AuthProvider } from './context/AuthContext';
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 import ActivatePage from './pages/auth/ActivatePage';
+import MfaVerifyPage from './pages/auth/MfaVerifyPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 
@@ -26,6 +27,7 @@ import AdminChefDeletePage from './pages/admin/AdminChefDeletePage';
 import AdminIngredientsListPage from './pages/admin/AdminIngredientsListPage';
 import AdminIngredientFormPage from './pages/admin/AdminIngredientFormPage';
 import AdminIngredientDeletePage from './pages/admin/AdminIngredientDeletePage';
+import AdminMfaPage from './pages/admin/AdminMfaPage';
 
 /**
  * Client-Side Routing sử dụng React Router v6 với Hash Mode (createHashRouter).
@@ -45,6 +47,8 @@ const router = createHashRouter([
       { path: 'register', element: <LoginPage initialTab="register" /> },
       { path: 'auth', element: <LoginPage initialTab="login" /> },
       { path: 'activate', element: <ActivatePage /> },
+      { path: 'mfa', element: <MfaVerifyPage /> },
+      { path: 'mfa/verify', element: <MfaVerifyPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'forgot', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
@@ -81,6 +85,10 @@ const router = createHashRouter([
             element: <AdminIngredientFormPage mode="edit" key="ing-edit" />,
           },
           { path: 'ingredients/:id/delete', element: <AdminIngredientDeletePage /> },
+
+          // Admin MFA Security Settings
+          { path: 'mfa', element: <AdminMfaPage /> },
+          { path: 'security', element: <AdminMfaPage /> },
         ],
       },
 

@@ -124,10 +124,35 @@ export default function LoginPage({ initialTab = 'login' }) {
     });
 
     if (res.ok && res.data) {
+      const redirectTo = location.state?.from?.pathname || '/admin/dishes';
+      const mfaChallenge = res.data.challenge || res.data.mfaToken;
+
+      // TH2: Tài khoản đã bật MFA (mfaEnabled === true) -> Chưa cấp accessToken, chuyển sang bước 2 (/mfa)
+      if (res.data.next === 'mfa' || (mfaChallenge && !res.data.accessToken)) {
+        const pendingState = {
+          challenge: mfaChallenge,
+          mfaToken: mfaChallenge,
+          email: res.data.email || trimmedEmail,
+          message:
+            res.data.message ||
+            'Mật khẩu hợp lệ. Vui lòng nhập mã xác thực 2 lớp (TOTP hoặc Recovery Code).',
+          from: redirectTo,
+        };
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('mfaPendingState', JSON.stringify(pendingState));
+        }
+        setLoginPassword('');
+        navigate('/mfa', { state: pendingState });
+        return;
+      }
+
+      // TH1: Tài khoản chưa bật MFA -> Nhận accessToken & user, hoàn tất đăng nhập
       const accessToken = res.data.accessToken;
       const userData = res.data.user || res.data;
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('mfaPendingState');
+      }
       loginSuccess(accessToken, userData);
-      const redirectTo = location.state?.from?.pathname || '/admin/dishes';
       navigate(redirectTo, { replace: true });
       return;
     }
